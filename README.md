@@ -275,7 +275,7 @@ deepseek-pet/
 ## 测试
 
 ```bash
-npm test        # 12 个测试文件：亲密度、搜索、HTTP、配置校验、SSE、番茄钟、表情包/指令、Markdown、UI 接线、主进程冒烟
+npm test        # 13 个测试文件、90+ 项：亲密度、搜索、HTTP、配置、SSE、多模态、番茄钟、表情包/指令、Markdown、UI 接线、preload、主进程冒烟
 npm run check   # 对全部 .js 做 node --check 语法检查
 ```
 
@@ -284,8 +284,9 @@ npm run check   # 对全部 .js 做 node --check 语法检查
 - `test/state.test.js` 覆盖等级阈值、每日上限、冷却时间、跨天重置和落盘。
 - `test/search.test.js` 验证 Tavily / SearXNG / DuckDuckGo 三种搜索的请求与解析。
 - `test/http.test.js` 用本地服务验证重定向、POST、JSON 解析和错误状态。
+- `test/preload.test.js` 校验安全桥的 payload 约定（消息、搜索开关、图片、设置保存）。
 - `test/chat-stream.test.js` 会起一个本地 HTTP 服务，真实验证 SSE 分包拼接、`[DONE]`、`reasoning_content`、401 提示和主动中断。
-- `test/main-smoke.test.js` 用一个纯 Node 的 Electron 替身把主进程完整跑一遍：建窗口、存设置、拖拽、离线回复、图片消息、亲密度、表情包、番茄钟、右键菜单、退出清理，**不需要真的装 Electron，也不需要联网**。
+- `test/main-smoke.test.js` 用一个纯 Node 的 Electron 替身把主进程完整跑一遍：建窗口、存设置、拖拽、离线回复、图片消息、视觉模型切换、亲密度、表情包、番茄钟、右键菜单、退出清理，**不需要真的装 Electron，也不需要联网**。
 
 ## 常见问题
 

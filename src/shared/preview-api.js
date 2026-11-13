@@ -151,7 +151,8 @@
       dragEnd: () => {},
       petMenu: () => window.alert('预览模式：右键菜单只在应用里可用'),
       hidePet: () => {},
-      sendChat: (messages) => {
+      sendChat: (payload) => {
+        const messages = Array.isArray(payload) ? payload : payload && payload.messages;
         const last = Array.isArray(messages) ? messages[messages.length - 1] : null;
         const text = `（预览）收到：${last ? last.content : ''} —— 在真正的应用里，这里会显示 DeepSeek 的流式回答。`;
         let index = 0;

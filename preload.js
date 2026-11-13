@@ -51,7 +51,11 @@ contextBridge.exposeInMainWorld('api', {
   hidePet: () => ipcRenderer.send('pet:hide'),
 
   // 聊天
-  sendChat: (messages) => ipcRenderer.send('chat:send', { messages }),
+  // 兼容两种调用方式：直接传消息数组，或传 { messages, search }
+  sendChat: (payload) => {
+    const normalized = Array.isArray(payload) ? { messages: payload } : payload || { messages: [] };
+    ipcRenderer.send('chat:send', normalized);
+  },
   abortChat: () => ipcRenderer.send('chat:abort'),
   onChatDelta: on('chat:delta'),
   onChatReasoning: on('chat:reasoning'),

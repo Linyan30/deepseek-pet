@@ -5,6 +5,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const http = require('node:http');
 
 const { installElectronMock } = require('../test-support/electron-mock');
 const { LINES } = require('../src/shared/quips');
@@ -235,6 +236,60 @@ test('右键可以弹出原生菜单', () => {
   const labels = mock.menus[mock.menus.length - 1].template.map((item) => item.label).filter(Boolean);
   assert.ok(labels.includes('和小鲸鱼聊天'));
   assert.ok(labels.includes('退出'));
+});
+
+test('发图片时会切换到视觉模型，并按多模态格式请求', async () => {
+  let captured = null;
+  const server = http.createServer((req, res) => {
+    let body = '';
+    req.on('data', (chunk) => {
+      body += chunk;
+    });
+    req.on('end', () => {
+      captured = JSON.parse(body);
+      res.writeHead(200, { 'Content-Type': 'text/event-stream' });
+      res.write('data: {"choices":[{"delta":{"content":"看到啦"}}]}\n\n');
+      res.end('data: [DONE]\n\n');
+    });
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const port = server.address().port;
+
+  try {
+    const saved = await mock.ipcMain.invoke('settings:save', settingsWindow.webContents.id, {
+      apiKey: 'sk-test',
+      baseUrl: `http://127.0.0.1:${port}/v1`,
+      model: 'text-model',
+      visionModel: 'vision-test'
+    });
+    assert.equal(saved.ok, true);
+
+    const before = chatWindow.webContents.sent.filter((item) => item.channel === 'chat:done').length;
+    mock.ipcMain.emitFrom('chat:send', chatWindow.webContents.id, {
+      messages: [
+        {
+          role: 'user',
+          content: '这是什么？',
+          image: 'data:image/png;base64,iVBORw0KGgo='
+        }
+      ],
+      search: false
+    });
+
+    await waitFor(
+      () => chatWindow.webContents.sent.filter((item) => item.channel === 'chat:done').length > before
+    );
+    await waitFor(() => captured);
+
+    assert.equal(captured.model, 'vision-test');
+    const last = captured.messages[captured.messages.length - 1];
+    assert.ok(Array.isArray(last.content));
+    assert.equal(last.content[0].type, 'text');
+    assert.equal(last.content[1].type, 'image_url');
+    assert.match(last.content[1].image_url.url, /^data:image\/png;base64,/);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
 });
 
 test('退出时清理计时器', () => {
