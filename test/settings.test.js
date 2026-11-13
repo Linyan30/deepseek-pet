@@ -113,7 +113,7 @@ test('联网搜索与图片模型配置校验', () => {
   assert.equal(settings.musicEnabled, false);
   assert.equal(settings.musicResults, 5);
 
-  assert.equal(sanitizeSettings({ searchProvider: 'google' }).searchProvider, 'duckduckgo');
+  assert.equal(sanitizeSettings({ searchProvider: 'google' }).searchProvider, 'auto');
   assert.equal(sanitizeSettings({ searxngUrl: 'ftp://bad' }).searxngUrl, '');
 });
 

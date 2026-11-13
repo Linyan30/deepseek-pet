@@ -89,7 +89,7 @@
     els.waterInterval.value = String(settings.waterInterval || 60);
     els.workMinutes.value = String(settings.workMinutes || 25);
     els.breakMinutes.value = String(settings.breakMinutes || 5);
-    els.searchProvider.value = settings.searchProvider || 'duckduckgo';
+    els.searchProvider.value = settings.searchProvider || 'auto';
     els.tavilyApiKey.value = settings.tavilyApiKey || '';
     els.searxngUrl.value = settings.searxngUrl || '';
     els.searchResults.value = String(settings.searchResults || 5);

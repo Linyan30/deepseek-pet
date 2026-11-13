@@ -9,8 +9,80 @@ const {
   normalizeResults,
   parseDuckDuckGo,
   parseTavily,
-  parseSearxng
+  parseSearxng,
+  parseBing
 } = require('../src/main/search');
+
+const BING_HTML = `<!DOCTYPE html><html><body><ol id="b_results">
+  <li class="b_algo" data-id iid=SERP.1>
+    <h2><a target="_blank" href="https://www.deepseek.com/news/v4">DeepSeek &amp; 新模型 &lt;V4&gt;</a></h2>
+    <p class="b_lineclamp2">2026年10月29日&ensp;DeepSeek 发布新版本，支持多模态。</p>
+  </li>
+  <li class="b_algo">
+    <h2><a href="https://example.com/b?x=1&amp;y=2">第二条 <strong>结果</strong></a></h2>
+    <p>摘要二</p>
+  </li>
+  <li class="b_algo"><h2>没有链接的块</h2></li>
+</ol></body></html>`;
+
+test('必应：解析网页结果、实体与摘要', () => {
+  const results = parseBing(BING_HTML, 5);
+  assert.equal(results.length, 2);
+  assert.equal(results[0].title, 'DeepSeek & 新模型 <V4>');
+  assert.equal(results[0].url, 'https://www.deepseek.com/news/v4');
+  assert.match(results[0].snippet, /支持多模态/);
+  assert.equal(results[1].url, 'https://example.com/b?x=1&y=2');
+});
+
+test('自动模式：必应可用时优先用必应', async () => {
+  const result = await searchWeb({
+    settings: { searchProvider: 'auto' },
+    query: 'DeepSeek',
+    request: async (url) => {
+      assert.match(url, /cn\.bing\.com/);
+      return { status: 200, body: BING_HTML };
+    }
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.provider, 'bing');
+  assert.equal(result.results.length, 2);
+});
+
+test('DuckDuckGo 连不上时自动回退到必应', async () => {
+  const result = await searchWeb({
+    settings: { searchProvider: 'duckduckgo' },
+    query: '今天的新闻',
+    request: async (url) => {
+      if (url.includes('duckduckgo')) {
+        const error = new Error('getaddrinfo ENOTFOUND api.duckduckgo.com');
+        error.code = 'ENOTFOUND';
+        throw error;
+      }
+      return { status: 200, body: BING_HTML };
+    }
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.provider, 'bing');
+  assert.ok(result.results.length > 0);
+});
+
+test('Tavily 没有 Key 时给出提示，不回退到别的服务', async () => {
+  let called = false;
+  const result = await searchWeb({
+    settings: { searchProvider: 'tavily', tavilyApiKey: '' },
+    query: '测试',
+    request: async () => {
+      called = true;
+      return { status: 200, body: {} };
+    }
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(called, false);
+  assert.match(result.error, /Key/);
+});
 
 test('Tavily：POST 请求体正确，结果会被裁剪', async () => {
   let captured = null;

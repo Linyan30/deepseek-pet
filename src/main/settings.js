@@ -26,7 +26,7 @@ const DEFAULT_SETTINGS = Object.freeze({
   waterInterval: 60,
   workMinutes: 25,
   breakMinutes: 5,
-  searchProvider: 'duckduckgo',
+  searchProvider: 'auto',
   tavilyApiKey: '',
   searxngUrl: '',
   searchResults: 5,
@@ -129,7 +129,7 @@ function sanitizeSettings(input, base = DEFAULT_SETTINGS) {
     waterInterval: cleanNumber(source.waterInterval, 15, 240, base.waterInterval),
     workMinutes: cleanNumber(source.workMinutes, 1, 120, base.workMinutes),
     breakMinutes: cleanNumber(source.breakMinutes, 1, 60, base.breakMinutes),
-    searchProvider: ['tavily', 'searxng', 'duckduckgo'].includes(source.searchProvider)
+    searchProvider: ['auto', 'bing', 'tavily', 'searxng', 'duckduckgo'].includes(source.searchProvider)
       ? source.searchProvider
       : base.searchProvider,
     tavilyApiKey: cleanString(source.tavilyApiKey, LIMITS.tavilyApiKey, base.tavilyApiKey),

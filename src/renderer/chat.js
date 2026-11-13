@@ -170,8 +170,20 @@
     const title = document.createElement('strong');
     const count = Array.isArray(payload.results) ? payload.results.length : 0;
     title.textContent = `🌐 ${count > 0 ? `联网搜索 · ${count} 条` : '联网搜索'}`;
+    const providerLabels = {
+      auto: '自动',
+      bing: '必应',
+      duckduckgo: 'DuckDuckGo',
+      tavily: 'Tavily',
+      searxng: 'SearXNG'
+    };
     const meta = document.createElement('span');
-    meta.textContent = [payload.provider, payload.query].filter(Boolean).join(' · ');
+    meta.textContent = [
+      providerLabels[payload.provider] || payload.provider,
+      payload.query
+    ]
+      .filter(Boolean)
+      .join(' · ');
     head.append(title, meta);
     block.appendChild(head);
 

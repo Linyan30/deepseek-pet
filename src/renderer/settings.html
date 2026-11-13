@@ -162,7 +162,9 @@
           <div class="field">
             <span class="field-label">搜索服务</span>
             <select id="searchProvider" style="width: 180px">
-              <option value="duckduckgo">DuckDuckGo（免费）</option>
+              <option value="auto">自动（推荐）</option>
+              <option value="bing">必应（国内可用）</option>
+              <option value="duckduckgo">DuckDuckGo（需外网）</option>
               <option value="tavily">Tavily（需 Key）</option>
               <option value="searxng">SearXNG（自建）</option>
             </select>
@@ -192,7 +194,7 @@
           <div class="test-result" id="search-test-result"></div>
 
           <p class="field-hint">
-            搜索会把结果和来源链接一起交给模型；结果条数建议 3~5 条，太多会占用上下文。
+            「自动」会先用必应，不行再试 DuckDuckGo；必应国内可以直接访问。搜索会把结果和来源链接一起交给模型，条数建议 3~5 条。
           </p>
         </section>
 
