@@ -160,6 +160,13 @@ git tag v1.0.0
 git push origin main --tags
 ```
 
+**不想用命令行？** 两个纯图形界面的办法：
+
+- **GitHub Desktop**：`File → Add local repository` 选中本项目文件夹 → `Publish repository`；之后在 History 里右键最新提交 → `Create Tag…` 填 `v1.0.0` → 推送。
+- **网页手动发版**：仓库 **Actions → Release → Run workflow**，填版本号（如 `v1.0.0`）→ 运行。工作流会自动创建 tag、构建三平台并发布到 Releases。
+
+> 用网页「Upload files」直接拖拽上传也能把代码传上去，但要注意：只拖项目**里面的内容**，不要拖外层文件夹，也**不要上传 `.git` 目录**；同时确认 `.github/workflows/` 两个 yml 已经上传成功，否则 Actions 页面不会出现工作流。
+
 ⚠️ 第一次使用前，请到仓库 **Settings → Actions → General → Workflow permissions** 选择
 **Read and write permissions**，否则 Release 会因为拿不到 `GITHUB_TOKEN` 写权限而失败。
 
