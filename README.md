@@ -90,8 +90,8 @@
 
 | 系统 | 文件 | 说明 |
 | --- | --- | --- |
-| Windows | `DeepSeekPet-x.y.z-portable.exe` | **免安装**，双击即用，推荐 |
-| Windows | `DeepSeekPet-x.y.z-setup.exe` | 安装版，可创建桌面快捷方式 |
+| Windows | `DeepSeekPet-x.y.z-setup.exe` | 安装版，**支持自动更新**，推荐 |
+| Windows | `DeepSeekPet-x.y.z-portable.exe` | 免安装，双击即用；更新需要手动下载 |
 | macOS | `DeepSeekPet-x.y.z.dmg` | 首次打开需右键 →「打开」 |
 | Linux | `DeepSeekPet-x.y.z.AppImage` | `chmod +x` 后直接运行 |
 
