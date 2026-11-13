@@ -148,6 +148,10 @@ function applySettings(patch, { silent = false } = {}) {
     scheduleWaterReminder();
   }
 
+  if (next.idleTalk !== previous.idleTalk) {
+    scheduleIdleTalk();
+  }
+
   if (
     next.workMinutes !== previous.workMinutes ||
     next.breakMinutes !== previous.breakMinutes

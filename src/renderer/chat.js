@@ -115,21 +115,40 @@
     return node;
   }
 
+  async function copyText(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      /* file:// 下可能没有 clipboard API，退回 execCommand */
+    }
+    try {
+      const helper = document.createElement('textarea');
+      helper.value = text;
+      helper.style.position = 'fixed';
+      helper.style.opacity = '0';
+      helper.style.pointerEvents = 'none';
+      document.body.appendChild(helper);
+      helper.select();
+      const ok = document.execCommand('copy');
+      helper.remove();
+      return ok;
+    } catch {
+      return false;
+    }
+  }
+
   function addCopyButton(node) {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'copy-btn';
     button.textContent = '复制';
     button.addEventListener('click', async () => {
-      try {
-        await navigator.clipboard.writeText(node.text.innerText);
-        button.textContent = '已复制';
-        setTimeout(() => {
-          button.textContent = '复制';
-        }, 1400);
-      } catch {
-        button.textContent = '复制失败';
-      }
+      const ok = await copyText(node.text.innerText);
+      button.textContent = ok ? '已复制' : '复制失败';
+      setTimeout(() => {
+        button.textContent = '复制';
+      }, 1400);
     });
     node.items.appendChild(button);
   }

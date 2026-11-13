@@ -6,7 +6,8 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 
-const { installElectronMock } = require('./helpers/electron-mock');
+const { installElectronMock } = require('../test-support/electron-mock');
+const { LINES } = require('../src/shared/quips');
 
 let mock;
 let settingsDir;
@@ -88,6 +89,7 @@ test('没有 API Key 时用内置台词流式回复，不会发网络请求', as
   const deltas = chatWindow.webContents.sent.filter((item) => item.channel === 'chat:delta');
   const reply = deltas.map((item) => item.payload.delta).join('');
   assert.ok(reply.length > 8, '应该收到逐字输出');
+  assert.ok(LINES.offline.includes(reply), `应该是内置台词之一，实际收到：${reply}`);
   assert.match(reply, /API Key|设置/);
 });
 

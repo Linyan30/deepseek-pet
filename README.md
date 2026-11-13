@@ -146,6 +146,12 @@ npm run dist:linux   # Linux：AppImage
 发布新版本的步骤：
 
 ```bash
+# 第一次上传：先在 GitHub 新建一个空仓库，然后
+git remote add origin https://github.com/<your-name>/deepseek-pet.git
+git branch -M main
+git push -u origin main
+
+# 之后每次发版
 git add .
 git commit -m "feat: 我的第一版桌面宠物"
 git tag v1.0.0
@@ -204,11 +210,14 @@ deepseek-pet/
 ## 测试
 
 ```bash
-npm test        # 7 个测试文件：配置校验、SSE 地址推导、番茄钟、Markdown 安全、UI 接线、主进程冒烟
+npm test        # 8 个测试文件：配置校验、SSE 地址推导、真实流式解析、番茄钟、Markdown 安全、UI 接线、主进程冒烟
 npm run check   # 对全部 .js 做 node --check 语法检查
 ```
 
-其中 `test/main-smoke.test.js` 用一个纯 Node 的 Electron 替身把主进程完整跑一遍：建窗口、存设置、拖拽、离线回复、番茄钟、右键菜单、退出清理，**不需要真的装 Electron，也不需要联网**。
+其中：
+
+- `test/chat-stream.test.js` 会起一个本地 HTTP 服务，真实验证 SSE 分包拼接、`[DONE]`、`reasoning_content`、401 提示和主动中断。
+- `test/main-smoke.test.js` 用一个纯 Node 的 Electron 替身把主进程完整跑一遍：建窗口、存设置、拖拽、离线回复、番茄钟、右键菜单、退出清理，**不需要真的装 Electron，也不需要联网**。
 
 ## 常见问题
 
