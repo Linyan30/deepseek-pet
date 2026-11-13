@@ -10,6 +10,7 @@
     scaleValue: document.getElementById('scale-value'),
     alwaysOnTop: document.getElementById('alwaysOnTop'),
     autoLaunch: document.getElementById('autoLaunch'),
+    autoUpdate: document.getElementById('autoUpdate'),
     idleTalk: document.getElementById('idleTalk'),
     hourlyChime: document.getElementById('hourlyChime'),
     apiKey: document.getElementById('apiKey'),
@@ -77,6 +78,7 @@
     els.scale.value = String(settings.scale || 1);
     els.alwaysOnTop.checked = Boolean(settings.alwaysOnTop);
     els.autoLaunch.checked = Boolean(settings.autoLaunch);
+    els.autoUpdate.checked = settings.autoUpdate !== false;
     els.idleTalk.checked = Boolean(settings.idleTalk);
     els.hourlyChime.checked = Boolean(settings.hourlyChime);
     els.apiKey.value = settings.apiKey || '';
@@ -105,6 +107,7 @@
       scale: Number(els.scale.value),
       alwaysOnTop: els.alwaysOnTop.checked,
       autoLaunch: els.autoLaunch.checked,
+      autoUpdate: els.autoUpdate.checked,
       idleTalk: els.idleTalk.checked,
       hourlyChime: els.hourlyChime.checked,
       apiKey: els.apiKey.value.trim(),

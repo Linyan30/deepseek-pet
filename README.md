@@ -58,6 +58,7 @@
 - **8 张表情包**：随等级解锁，聊天时会看关键词主动发，摸头和升级也会出现
 - **整点报时**：每到整点冒个泡提醒时间，可在设置 / 托盘里关掉
 - **快捷指令**：聊天里的 ⚡ 面板、斜杠 `/翻译`、右键菜单都能用，自动带上剪贴板内容
+- **自动更新**：安装版启动后自动检查、后台下载，托盘点「重启并安装」就完成升级；便携版会提示去下载新版本
 - 可调大小（70% ~ 160%）、可开机自启
 
 **AI 对话**
@@ -181,6 +182,15 @@ npm run dist:linux   # Linux：AppImage
 
 产物在 `release/` 目录。第一次打包会下载对应平台的 Electron 二进制（约 100 MB），之后有缓存。
 
+## 自动更新
+
+安装版（`setup.exe` / AppImage）内置了 electron-updater：启动 20 秒后检查一次，之后每 6 小时检查一次；发现新版本会在后台下载，托盘里出现「重启并安装 vX」，退出应用时也会自动安装。
+
+- **便携版**（`portable.exe`）无法替换自身，检测到新版本只会提示，并从托盘打开 Releases 页面手动下载；
+- **macOS** 未签名时系统可能拒绝自动安装，建议直接下载新的 dmg；
+- 设置里可以关闭「自动检查更新」；
+- 自动更新依赖 Release 里的 `latest.yml` / `latest-mac.yml` / `latest-linux.yml`：`electron-builder.yml` 已配置 GitHub publish，CI 会在打包后校验这些文件存在并一起上传，不要手动删掉。
+
 ## 用 GitHub Actions 自动发布（不用本机装环境）
 
 仓库已经带好两个工作流：
@@ -227,7 +237,8 @@ deepseek-pet/
 │  │  ├─ settings.js          # 配置默认值 + 校验 + 读写
 │  │  ├─ state.js             # 亲密度、等级、每日上限、统计
 │  │  ├─ chat.js              # DeepSeek SSE 流式请求
-│  │  ├─ search.js            # 联网搜索（Tavily / SearXNG / DuckDuckGo）
+│  │  ├─ search.js            # 联网搜索（Tavily / SearXNG / DuckDuckGo / 必应）
+│  │  ├─ updater.js           # 自动更新（electron-updater + 便携版检查）
 │  │  ├─ http.js              # 带重定向和超时的 JSON 请求器
 │  │  ├─ pomodoro.js          # 番茄钟状态机
 │  │  └─ windows.js           # 尺寸、屏幕边界、窗口贴边计算
@@ -277,14 +288,15 @@ deepseek-pet/
 ## 测试
 
 ```bash
-npm test        # 13 个测试文件、90+ 项：亲密度、搜索、HTTP、配置、SSE、多模态、番茄钟、表情包/指令、Markdown、UI 接线、preload、主进程冒烟
+npm test        # 14 个测试文件、100+ 项：亲密度、搜索、更新器、HTTP、配置、SSE、多模态、番茄钟、表情包/指令、Markdown、UI 接线、preload、主进程冒烟
 npm run check   # 对全部 .js 做 node --check 语法检查
 ```
 
 其中：
 
 - `test/state.test.js` 覆盖等级阈值、每日上限、冷却时间、跨天重置和落盘。
-- `test/search.test.js` 验证 Tavily / SearXNG / DuckDuckGo 三种搜索的请求与解析。
+- `test/search.test.js` 验证必应 / Tavily / SearXNG / DuckDuckGo 的请求与解析，以及国内自动回退。
+- `test/updater.test.js` 覆盖版本比较、便携版检查、安装版下载与重启安装、错误处理。
 - `test/http.test.js` 用本地服务验证重定向、POST、JSON 解析和错误状态。
 - `test/preload.test.js` 校验安全桥的 payload 约定（消息、搜索开关、图片、设置保存）。
 - `test/chat-stream.test.js` 会起一个本地 HTTP 服务，真实验证 SSE 分包拼接、`[DONE]`、`reasoning_content`、401 提示和主动中断。
@@ -326,6 +338,9 @@ Electron 打包的未签名程序比较常见，可以加白名单，或用 `npm
 
 **发图片后提示模型不支持？**
 `deepseek-chat` 是纯文本模型。要图片识别，请在设置里改用支持视觉的接口（Base URL + 模型），并填写「图片识别模型」，再发一次即可。
+
+**自动更新没反应？**
+自动更新只对安装版（`setup.exe` / AppImage）生效；便携版只会提示手动下载。再看看设置里的「自动检查更新」是否被关掉，以及 Release 里有没有 `latest.yml`。macOS 未签名时系统可能拒绝自动安装，直接下载新的 dmg 即可。
 
 **为什么窗口是透明的但有时候点不到？**
 这是故意的：只有鼠标移到角色或气泡上才会接管点击，其他区域直接穿透。

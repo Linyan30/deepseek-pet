@@ -181,6 +181,7 @@ function installElectronMock(options) {
   app.isQuitting = false;
   app.quitCalled = false;
   app.loginItemSettings = null;
+  app.isPackaged = false;
   app.requestSingleInstanceLock = () => true;
   app.whenReady = () => Promise.resolve();
   app.pathOverrides = {};

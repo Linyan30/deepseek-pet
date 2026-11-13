@@ -69,7 +69,7 @@
         return { ok: true, settings: { ...settings } };
       },
       testApi: async () => ({ ok: false, message: '浏览器预览模式无法连接 API。', models: [] }),
-      getVersion: async () => ({ version: '1.1.1', electron: 'preview', platform: 'browser' }),
+      getVersion: async () => ({ version: '1.2.0', electron: 'preview', platform: 'browser' }),
       getQuips: async () => DEMO_LINES,
       getState: async () => ({
         affinity: 132,

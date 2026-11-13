@@ -15,6 +15,12 @@ files:
 asar: true
 compression: maximum
 
+# 自动更新元数据（latest.yml / latest-mac.yml / latest-linux.yml）的来源
+publish:
+  provider: github
+  owner: Linyan30
+  repo: deepseek-pet
+
 win:
   icon: build/icon.ico
   target:
@@ -40,15 +46,17 @@ nsis:
 mac:
   category: public.app-category.entertainment
   icon: build/icon.png
+  # dmg 给用户手动安装，zip 给自动更新用（electron-updater 需要）
+  artifactName: DeepSeekPet-${version}-${arch}.${ext}
   target:
     - target: dmg
       arch:
         - arm64
         - x64
-
-dmg:
-  # 同时打 arm64 / x64，文件名带架构后缀，避免互相覆盖
-  artifactName: DeepSeekPet-${version}-${arch}.${ext}
+    - target: zip
+      arch:
+        - arm64
+        - x64
 
 linux:
   icon: build/icon.png

@@ -95,6 +95,12 @@ test('整点报时默认开启，可关闭', () => {
   assert.equal(sanitizeSettings({ hourlyChime: 'no' }).hourlyChime, true);
 });
 
+test('自动检查更新默认开启', () => {
+  assert.equal(sanitizeSettings({}).autoUpdate, true);
+  assert.equal(sanitizeSettings({ autoUpdate: false }).autoUpdate, false);
+  assert.equal(sanitizeSettings({ autoUpdate: 'no' }).autoUpdate, true);
+});
+
 test('联网搜索与图片模型配置校验', () => {
   const settings = sanitizeSettings({
     searchProvider: 'tavily',

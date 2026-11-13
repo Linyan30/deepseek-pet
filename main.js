@@ -19,9 +19,11 @@ const { DEFAULT_SETTINGS, loadSettings, saveSettings, sanitizeSettings } = requi
 const { streamChat, testConnection } = require('./src/main/chat');
 const { Pomodoro, PHASE, formatClock } = require('./src/main/pomodoro');
 const { createStateStore } = require('./src/main/state');
+const { createUpdater } = require('./src/main/updater');
 const { searchWeb, buildSearchContext } = require('./src/main/search');
 const { searchMusic } = require('./src/main/music');
 const { LINES, pick } = require('./src/shared/quips');
+const packageJson = require('./package.json');
 const { STICKERS, findSticker, randomSticker, maybeSticker } = require('./src/shared/stickers');
 const { COMMANDS, findCommand, buildPrompt } = require('./src/shared/commands');
 const {
@@ -67,6 +69,9 @@ let lastStickerAt = 0;
 let currentTrack = null;
 let musicPlaying = false;
 let lastMusicTrayUpdate = 0;
+let updater = null;
+let updateTimer = null;
+let updateInterval = null;
 
 // ---------------------------------------------------------------- 基础工具
 
@@ -291,6 +296,10 @@ function applySettings(patch, { silent = false } = {}) {
 
   if (next.hourlyChime !== previous.hourlyChime) {
     scheduleHourlyChime();
+  }
+
+  if (next.autoUpdate !== previous.autoUpdate) {
+    scheduleUpdateChecks();
   }
 
   if (
@@ -531,6 +540,8 @@ function quitApp() {
     clearTimeout(idleTimer);
     clearTimeout(chimeTimer);
     clearTimeout(positionTimer);
+    clearTimeout(updateTimer);
+    clearInterval(updateInterval);
     if (activeStream) activeStream.abort();
   } catch {
     /* 退出阶段忽略清理错误 */
@@ -539,6 +550,51 @@ function quitApp() {
 }
 
 // ---------------------------------------------------------------- 托盘
+
+/** 启动后 20 秒检查一次，之后每 6 小时检查一次。 */
+function scheduleUpdateChecks() {
+  clearTimeout(updateTimer);
+  clearInterval(updateInterval);
+  updateTimer = null;
+  updateInterval = null;
+  if (!updater || !settings.autoUpdate) return;
+
+  updateTimer = setTimeout(() => {
+    if (updater) updater.check({ manual: false });
+  }, 20000);
+
+  updateInterval = setInterval(() => {
+    if (updater) updater.check({ manual: false });
+  }, 6 * 60 * 60 * 1000);
+}
+
+/** 托盘里的更新相关菜单项。 */
+function updateMenuItems() {
+  const items = [];
+  const state = updater ? updater.getState() : null;
+
+  if (state && state.phase === 'ready') {
+    items.push({
+      label: `重启并安装 v${state.version}`,
+      click: () => updater.installNow()
+    });
+  } else if (state && state.phase === 'manual') {
+    items.push({
+      label: `下载新版本 v${state.version}`,
+      click: () => updater.openManual()
+    });
+  } else if (state && state.phase === 'downloading') {
+    items.push({ label: `正在下载更新 ${state.progress}%`, enabled: false });
+  }
+
+  items.push({
+    label: '检查更新…',
+    click: () => {
+      if (updater) updater.check({ manual: true });
+    }
+  });
+  return items;
+}
 
 function updateTrayMenu() {
   if (!tray) return;
@@ -616,6 +672,7 @@ function updateTrayMenu() {
       }
     },
     { type: 'separator' },
+    ...updateMenuItems(),
     { label: '设置…', click: () => openSettings() },
     { type: 'separator' },
     { label: '退出', click: () => quitApp() }
@@ -1230,6 +1287,17 @@ if (!gotLock) {
     registerIpc();
     createPetWindow();
     createTray();
+    updater = createUpdater({
+      app,
+      shell,
+      notify,
+      bubble,
+      getSettings: () => settings,
+      onStateChange: () => updateTrayMenu(),
+      packageJson
+    });
+    updater.init();
+    scheduleUpdateChecks();
     scheduleWaterReminder();
     scheduleIdleTalk();
     scheduleHourlyChime();
@@ -1264,5 +1332,7 @@ if (!gotLock) {
     clearTimeout(idleTimer);
     clearTimeout(chimeTimer);
     clearTimeout(positionTimer);
+    clearTimeout(updateTimer);
+    clearInterval(updateInterval);
   });
 }

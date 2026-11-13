@@ -53,6 +53,21 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: false
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: 检查自动更新元数据
+        shell: bash
+        run: |
+          case "${{ matrix.platform }}" in
+            win) file=latest.yml ;;
+            mac) file=latest-mac.yml ;;
+            linux) file=latest-linux.yml ;;
+          esac
+          if [ ! -f "release/$file" ]; then
+            echo "::error::缺少 $file，自动更新会失效"
+            ls -la release || true
+            exit 1
+          fi
+          echo "OK: $file"
+
       - name: 上传构建产物
         uses: actions/upload-artifact@v4
         with:
@@ -61,8 +76,10 @@ jobs:
           path: |
             release/*.exe
             release/*.dmg
-            release/*.AppImage
             release/*.zip
+            release/*.AppImage
+            release/latest*.yml
+            release/*.blockmap
 
   release:
     name: 发布到 GitHub Release
