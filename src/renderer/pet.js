@@ -7,6 +7,7 @@
   const els = {
     stage: document.getElementById('stage'),
     pet: document.getElementById('pet'),
+    girl: document.getElementById('girl'),
     whale: document.getElementById('whale'),
     pupils: document.getElementById('pupils'),
     bubble: document.getElementById('bubble'),
@@ -17,7 +18,7 @@
     hearts: document.getElementById('hearts')
   };
 
-  let settings = { petName: '小深', scale: 1 };
+  let settings = { petName: '小深', petStyle: 'girl', scale: 1 };
   let lines = null;
   let bubbleTimer = 0;
   let moodTimer = 0;
@@ -34,13 +35,21 @@
   }
 
   function setMood(mood, duration) {
+    els.stage.dataset.mood = mood;
     els.whale.dataset.mood = mood;
     clearTimeout(moodTimer);
     if (duration) {
       moodTimer = window.setTimeout(() => {
+        els.stage.dataset.mood = 'idle';
         els.whale.dataset.mood = 'idle';
       }, duration);
     }
+  }
+
+  function applyStyle(style) {
+    const value = style === 'whale' ? 'whale' : 'girl';
+    els.stage.dataset.style = value;
+    return value;
   }
 
   function hideBubble() {
@@ -131,7 +140,7 @@
   }
 
   function updatePupils(event) {
-    if (!els.pupils) return;
+    if (!els.pupils || els.stage.dataset.style !== 'whale') return;
     const rect = els.whale.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
     const centerX = rect.left + rect.width / 2;
@@ -225,6 +234,7 @@
   api.onSettingsChanged((next) => {
     if (!next) return;
     settings = Object.assign({}, settings, next);
+    applyStyle(settings.petStyle);
     document.title = `${settings.petName || '小鲸鱼'} · 桌面宠物`;
   });
 
@@ -237,6 +247,7 @@
     } catch {
       /* 使用默认值 */
     }
+    applyStyle(settings.petStyle);
     document.title = `${settings.petName || '小鲸鱼'} · 桌面宠物`;
 
     try {
@@ -254,7 +265,7 @@
     window.setTimeout(() => {
       const hour = new Date().getHours();
       const hello = format ? format.greeting(hour) : '你好';
-      showBubble(`${hello}，我是${settings.petName}～ 点我聊天，拖着我去哪都行`, {
+      showBubble(`${hello}，我是${settings.petName}～ 点我聊天，拖着我走`, {
         mood: 'idle',
         duration: 4600
       });

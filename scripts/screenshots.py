@@ -54,7 +54,6 @@ def render(chrome: str, target: str, width: int, height: int, background: str, s
         "pet": "../src/renderer/pet.html",
         "chat": "../src/renderer/chat.html?demo=1",
         "settings": "../src/renderer/settings.html",
-        "logo": "../src/renderer/assets/logo.svg",
     }[target]
 
     url = f"file:///{HARNESS.as_posix()}?src={src}&w={width}&h={height}"
@@ -90,10 +89,12 @@ def render(chrome: str, target: str, width: int, height: int, background: str, s
 
 def main() -> int:
     chrome = find_chrome()
-    render(chrome, "pet", 200, 250, "00000000")
+    render(chrome, "pet", 210, 290, "00000000")
     render(chrome, "chat", 380, 540, "ffffffff")
     render(chrome, "settings", 420, 640, "ffffffff")
-    render(chrome, "logo", 512, 512, "00000000")
+
+    # 应用图标：用鲸鱼娘头像合成，再转出 ico / 托盘图
+    subprocess.run([sys.executable, str(ROOT / "scripts" / "make-logo.py")], check=True)
 
     make_icons = ROOT / "scripts" / "make-icons.py"
     subprocess.run([sys.executable, str(make_icons), str(SHOTS / "logo.png")], check=True)

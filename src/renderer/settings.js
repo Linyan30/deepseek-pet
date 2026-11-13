@@ -5,6 +5,7 @@
 
   const els = {
     petName: document.getElementById('petName'),
+    petStyle: document.getElementById('petStyle'),
     scale: document.getElementById('scale'),
     scaleValue: document.getElementById('scale-value'),
     alwaysOnTop: document.getElementById('alwaysOnTop'),
@@ -51,6 +52,7 @@
 
   function fill(settings) {
     els.petName.value = settings.petName || '小深';
+    els.petStyle.value = settings.petStyle === 'whale' ? 'whale' : 'girl';
     els.scale.value = String(settings.scale || 1);
     els.alwaysOnTop.checked = Boolean(settings.alwaysOnTop);
     els.autoLaunch.checked = Boolean(settings.autoLaunch);
@@ -71,6 +73,7 @@
   function collect() {
     return {
       petName: els.petName.value.trim() || '小深',
+      petStyle: els.petStyle.value === 'whale' ? 'whale' : 'girl',
       scale: Number(els.scale.value),
       alwaysOnTop: els.alwaysOnTop.checked,
       autoLaunch: els.autoLaunch.checked,

@@ -49,8 +49,8 @@ after(() => {
 
 test('启动后出现透明小窗口，并注册了显示/隐藏快捷键', () => {
   assert.ok(petWindow, '应该创建宠物窗口');
-  assert.equal(petWindow.bounds.width, 200);
-  assert.equal(petWindow.bounds.height, 250);
+  assert.equal(petWindow.bounds.width, 210);
+  assert.equal(petWindow.bounds.height, 290);
   assert.equal(petWindow.options.transparent, true);
   assert.equal(petWindow.options.frame, false);
   assert.equal(petWindow.options.skipTaskbar, true);
@@ -111,8 +111,8 @@ test('设置窗口保存后立即生效：名字、大小、密钥', async () =>
 
   assert.equal(result.ok, true);
   assert.equal(result.settings.apiKey, 'sk-test');
-  assert.equal(petWindow.bounds.width, 240);
-  assert.equal(petWindow.bounds.height, 300);
+  assert.equal(petWindow.bounds.width, 252);
+  assert.equal(petWindow.bounds.height, 348);
   assert.equal(petWindow.zoomFactor, 1.2);
 
   const changed = petWindow.webContents.sent.filter((item) => item.channel === 'settings:changed').pop();

@@ -2,7 +2,7 @@
 
 const { screen } = require('electron');
 
-const PET_BASE = Object.freeze({ width: 200, height: 250 });
+const PET_BASE = Object.freeze({ width: 210, height: 290 });
 const CHAT_SIZE = Object.freeze({ width: 380, height: 540 });
 const SETTINGS_SIZE = Object.freeze({ width: 420, height: 640 });
 

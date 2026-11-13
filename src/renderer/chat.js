@@ -8,6 +8,7 @@
   };
 
   const els = {
+    avatar: document.getElementById('avatar'),
     petName: document.getElementById('pet-name'),
     status: document.getElementById('status'),
     messages: document.getElementById('messages'),
@@ -69,6 +70,10 @@
 
   // ------------------------------------------------------------ 消息渲染
 
+  function avatarSource() {
+    return settings.petStyle === 'whale' ? 'assets/avatar.svg' : 'assets/avatar-girl.png';
+  }
+
   function createMessageNode(role) {
     const wrap = document.createElement('div');
     wrap.className = `msg ${role}`;
@@ -77,7 +82,7 @@
     if (role === 'assistant') {
       const avatar = document.createElement('img');
       avatar.className = 'who';
-      avatar.src = 'assets/avatar.svg';
+      avatar.src = avatarSource();
       avatar.alt = '';
       wrap.appendChild(avatar);
 
@@ -368,6 +373,9 @@
 
   function applySettingsToUi() {
     els.petName.textContent = settings.petName || '小深';
+    if (els.avatar) {
+      els.avatar.src = avatarSource();
+    }
     document.title = `${settings.petName || '小鲸鱼'} · 聊天`;
     if (!streaming) {
       setStatus(settings.hasApiKey ? '在线' : '未配置 API Key');

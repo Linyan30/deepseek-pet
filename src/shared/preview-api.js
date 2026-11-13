@@ -13,6 +13,7 @@
     temperature: 1,
     systemPrompt: '你是小深，一只住在桌面上的 DeepSeek 小鲸鱼。',
     petName: '小深',
+    petStyle: 'girl',
     scale: 1,
     alwaysOnTop: true,
     autoLaunch: false,

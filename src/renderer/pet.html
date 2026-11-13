@@ -10,12 +10,20 @@
     <link rel="stylesheet" href="pet.css" />
   </head>
   <body>
-    <div class="stage" id="stage">
+    <div class="stage" id="stage" data-style="girl" data-mood="idle">
       <div class="bubble" id="bubble" data-hit="1" aria-hidden="true">
         <span id="bubble-text"></span>
       </div>
 
       <div class="pet" id="pet" data-hit="1">
+        <div class="ground-shadow" id="ground-shadow"></div>
+        <img
+          class="girl"
+          id="girl"
+          src="assets/pet-girl.png"
+          alt=""
+          draggable="false"
+        />
         <svg
           id="whale"
           class="whale"
@@ -174,6 +182,8 @@
           </g>
         </svg>
       </div>
+
+      <div class="sleep-marks" aria-hidden="true"><span>z</span><span>z</span><span>z</span></div>
 
       <div class="badge hidden" id="badge" data-hit="1" title="点击开始 / 暂停番茄钟">
         <span class="badge-icon" id="badge-icon">🍅</span>

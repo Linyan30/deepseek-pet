@@ -82,6 +82,13 @@ test('position 支持负坐标（多显示器），异常值会被清空', () =>
   assert.equal(sanitizeSettings({ position: 'bad' }).position, null);
 });
 
+test('形象风格只接受 girl / whale', () => {
+  assert.equal(sanitizeSettings({ petStyle: 'whale' }).petStyle, 'whale');
+  assert.equal(sanitizeSettings({ petStyle: 'girl' }).petStyle, 'girl');
+  assert.equal(sanitizeSettings({ petStyle: 'dragon' }).petStyle, 'girl');
+  assert.equal(sanitizeSettings({}).petStyle, 'girl');
+});
+
 test('API Key 只保留一份，且长度受限', () => {
   const settings = sanitizeSettings({ apiKey: `  sk-${'x'.repeat(1000)}  ` });
   assert.equal(settings.apiKey.length, 400);

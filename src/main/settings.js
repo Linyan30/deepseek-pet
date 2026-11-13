@@ -15,6 +15,7 @@ const DEFAULT_SETTINGS = Object.freeze({
   systemPrompt:
     '你是“小深”，一只住在用户电脑桌面上的 DeepSeek 小鲸鱼。你说话简短、软萌、有元气，回答默认不超过 3 句话；用户明确要求详细解释时再展开。回答用中文，可以偶尔用颜文字，但不要滥用。',
   petName: '小深',
+  petStyle: 'girl',
   scale: 1,
   alwaysOnTop: true,
   autoLaunch: false,
@@ -92,6 +93,7 @@ function sanitizeSettings(input, base = DEFAULT_SETTINGS) {
     temperature: cleanNumber(source.temperature, 0, 2, base.temperature),
     systemPrompt: cleanString(source.systemPrompt, LIMITS.systemPrompt, base.systemPrompt),
     petName: cleanString(source.petName, LIMITS.petName, base.petName) || base.petName,
+    petStyle: source.petStyle === 'whale' ? 'whale' : 'girl',
     scale: cleanNumber(source.scale, 0.7, 1.6, base.scale),
     alwaysOnTop: cleanBool(source.alwaysOnTop, base.alwaysOnTop),
     autoLaunch: cleanBool(source.autoLaunch, base.autoLaunch),

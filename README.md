@@ -1,8 +1,8 @@
-# 🐳 DeepSeek 桌面小鲸鱼
+# 🐳 DeepSeek 桌面鲸鱼娘
 
 <img src="docs/screenshots/logo.png" width="96" align="right" alt="小鲸鱼图标" />
 
-一只住在桌面角落的 DeepSeek 小鲸鱼：可以拖动、可以摸头、可以聊天、会提醒你喝水和专注。
+一只住在桌面角落的 DeepSeek 鲸鱼娘（也可以一键切回简约小鲸鱼）：可以拖动、可以摸头、可以聊天、会提醒你喝水和专注。
 纯 Electron + 原生 JavaScript，**没有数据库、没有后端、没有运行时依赖**，打包后是一个免安装的小 exe，发给朋友就能用。
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-4d6bfe.svg)](LICENSE)
@@ -25,6 +25,7 @@
 - [用 GitHub Actions 自动发布](#用-github-actions-自动发布不用本机装环境)
 - [目录结构](#目录结构)
 - [自定义](#自定义)
+- [形象与素材说明](#形象与素材说明)
 - [隐私与安全](#隐私与安全)
 - [测试](#测试)
 - [常见问题](#常见问题)
@@ -42,12 +43,13 @@
 
 **桌面宠物**
 
-- 透明无边框小窗口（默认 200 × 250），始终置顶、不占任务栏
-- 只在小鲸鱼身上响应鼠标，空白区域点击可以直接穿透到桌面
+- 透明无边框小窗口（默认 210 × 290），始终置顶、不占任务栏
+- 两种形象：二次元鲸鱼娘（默认）与简约小鲸鱼，设置里一键切换
+- 只在角色身上响应鼠标，空白区域点击可以直接穿透到桌面
 - 拖动换位置并记住；单击摸头（爱心 + 随机台词）、双击打开聊天、右键原生菜单
 - 托盘常驻：聊天、显示/隐藏、番茄钟、喝水提醒开关、设置、退出
 - 全局快捷键 `Ctrl / Cmd + Shift + Alt + D` 一键显示/隐藏
-- 眨眼、摆尾、气泡、眼神跟着鼠标走
+- 待机浮动、开心蹦跳、喜欢时摇一摇、困困时冒 zzz，气泡跟着说话
 - 可调大小（70% ~ 160%）、可开机自启
 
 **AI 对话**
@@ -177,13 +179,14 @@ deepseek-pet/
 │  │  ├─ pomodoro.js          # 番茄钟状态机
 │  │  └─ windows.js           # 尺寸、屏幕边界、窗口贴边计算
 │  ├─ renderer/
-│  │  ├─ pet.html/.css/.js    # 小鲸鱼（SVG + 交互）
+│  │  ├─ pet.html/.css/.js    # 宠物窗口（两种形象 + 交互 + 动画）
 │  │  ├─ chat.html/.css/.js   # 聊天面板
 │  │  ├─ settings.html/.css/.js
-│  │  └─ assets/              # 头像、图标 SVG
+│  │  └─ assets/              # 鲸鱼娘图、简约鲸鱼头像、托盘图
 │  └─ shared/                 # 台词、Markdown、格式化（渲染进程 + 测试共用）
-├─ scripts/                   # 语法检查、截图、图标生成
-├─ test/                      # node:test 单元测试 + 主进程冒烟测试
+├─ scripts/                   # 语法检查、测试入口、切图、截图、图标生成
+├─ test/                      # 单元测试 + 主进程冒烟测试
+├─ test-support/              # 纯 Node 的 Electron 替身
 ├─ docs/screenshots/          # README 截图
 └─ .github/workflows/         # CI 与自动发布
 ```
@@ -192,13 +195,21 @@ deepseek-pet/
 
 | 想改什么 | 改哪里 |
 | --- | --- |
-| 小鲸鱼的样子 | `src/renderer/pet.html` 里的内联 SVG，表情靠 `#whale[data-mood]` 切换 |
+| 鲸鱼娘形象 | 替换 `src/renderer/assets/pet-girl.png`；或用自己的图跑 `python scripts/prepare-art.py 图片路径`（自动去白底、裁掉自带气泡、生成头像） |
+| 简约小鲸鱼 | `src/renderer/pet.html` 里的内联 SVG，表情靠 `data-mood` 切换 |
 | 台词 | `src/shared/quips.js`，所有气泡文案都在这里 |
 | 宠物 / 聊天窗口大小 | `src/main/windows.js` 顶部的 `PET_BASE`、`CHAT_SIZE` |
 | 人设 | 设置页的「小鲸鱼的人设」，或 `src/main/settings.js` 里的 `systemPrompt` 默认值 |
-| 图标 | 改 `src/renderer/assets/logo.svg`，然后运行 `python scripts/screenshots.py` 重新生成 `build/icon.ico`、`build/icon.png`、`build/tray.png`（需要 Chrome / Edge + Pillow） |
+| 应用图标 | `python scripts/make-logo.py && python scripts/make-icons.py docs/screenshots/logo.png`（需要 Pillow） |
 
-小鲸鱼的 SVG 是完全独立绘制的：换掉 `pet.html` 里那一段 `<svg>`，只要保留 `data-mood` 的表情分组，交互和动画都能继续用。
+> 形象风格在设置页「形象风格」里切换；两种形象的交互、气泡、番茄钟徽标完全一致。
+
+## 形象与素材说明
+
+- 代码（含简约小鲸鱼 SVG、界面、图标排版）以 **MIT** 协议开源。
+- 二次元「鲸鱼娘」立绘素材由项目使用者提供，**不在 MIT 授权范围内**，版权/使用许可请自行确认；公开发布前请确认你有权分发这张图。
+- 想完全规避素材风险：把 `src/renderer/assets/pet-girl.png` 换成自己画的图，或在设置里切到「简约小鲸鱼」，并删除对应 PNG 即可。
+- 自定义形象的合成方式见 `scripts/prepare-art.py`，它只做去底、裁切、缩放，不改变原画内容。
 
 ## 隐私与安全
 
@@ -238,11 +249,15 @@ Electron 打包的未签名程序比较常见，可以加白名单，或用 `npm
 **能改成本地模型吗？**
 可以。Base URL 填本地 OpenAI 兼容服务（例如 `http://127.0.0.1:11434/v1`），模型填对应的模型名即可。
 
+**想换回简约小鲸鱼？**
+设置 →「形象风格」→ 简约小鲸鱼，保存后立刻生效。
+
 **为什么窗口是透明的但有时候点不到？**
-这是故意的：只有鼠标移到小鲸鱼或气泡上才会接管点击，其他区域直接穿透。
+这是故意的：只有鼠标移到角色或气泡上才会接管点击，其他区域直接穿透。
 
 ## 许可证与致谢
 
 - 代码以 [MIT](LICENSE) 协议开源，可自由修改、商用、二次发布。
-- 小鲸鱼形象是本项目**原创绘制**的 SVG，造型灵感来自 DeepSeek 的鲸鱼吉祥物；「DeepSeek」名称与商标归其所有者，本项目与其没有隶属关系，也未使用其官方素材。
+- 简约小鲸鱼是本项目**原创绘制**的 SVG，造型灵感来自 DeepSeek 的鲸鱼吉祥物；「DeepSeek」名称与商标归其所有者，本项目与其没有隶属关系，也未使用其官方素材。
+- 二次元鲸鱼娘立绘由使用者提供，授权范围见 [素材说明](docs/ART-NOTICE.md)，不在 MIT 覆盖范围内。
 - 感谢 [Electron](https://www.electronjs.org/)、[electron-builder](https://www.electron.build/) 和 DeepSeek 开放平台。

@@ -10,6 +10,7 @@ out/
 *.log
 tmp/
 test/.tmp/
+docs/_*
 
 # 系统与编辑器
 .DS_Store
@@ -23,3 +24,7 @@ Thumbs.db
 .env.*
 settings.json
 *.key
+
+# Python 缓存
+__pycache__/
+*.pyc
