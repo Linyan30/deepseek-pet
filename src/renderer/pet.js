@@ -15,6 +15,9 @@
     badge: document.getElementById('badge'),
     badgeIcon: document.getElementById('badge-icon'),
     badgeText: document.getElementById('badge-text'),
+    sticker: document.getElementById('pet-sticker'),
+    musicDot: document.getElementById('music-dot'),
+    audio: document.getElementById('audio'),
     hearts: document.getElementById('hearts')
   };
 
@@ -22,6 +25,7 @@
   let lines = null;
   let bubbleTimer = 0;
   let moodTimer = 0;
+  let stickerTimer = 0;
   let dragging = false;
   let movedWhileDragging = false;
   let lastPointer = { x: 0, y: 0 };
@@ -90,6 +94,105 @@
     const line = pick(lines && lines.click) || '咕噜咕噜～';
     showBubble(line, { mood: 'love', duration: 2600 });
     spawnHearts(5);
+    api.reportPat();
+  }
+
+  function showSticker(payload) {
+    if (!payload || !payload.id || !els.sticker) return;
+    window.clearTimeout(stickerTimer);
+    els.sticker.src = `assets/stickers/${payload.id}.png`;
+    els.sticker.alt = payload.caption || '表情包';
+    els.sticker.classList.add('show');
+    stickerTimer = window.setTimeout(
+      () => els.sticker.classList.remove('show'),
+      Math.max(1200, payload.duration || 2600)
+    );
+  }
+
+  // ------------------------------------------------------------ 音乐
+
+  const music = { track: null, lastSentAt: 0 };
+
+  function setMusicDot(on) {
+    if (els.musicDot) els.musicDot.classList.toggle('hidden', !on);
+  }
+
+  function sendMusicState(extra) {
+    if (!els.audio || !api.musicState) return;
+    const payload = Object.assign(
+      {
+        playing: !els.audio.paused && !els.audio.ended && Boolean(els.audio.src),
+        currentTime: Number(els.audio.currentTime) || 0,
+        duration: Number(els.audio.duration) || (music.track && music.track.duration) || 0,
+        track: music.track
+      },
+      extra || {}
+    );
+    api.musicState(payload);
+  }
+
+  function playTrack(track) {
+    if (!track || !track.preview || !els.audio) return;
+    music.track = track;
+    els.audio.src = track.preview;
+    els.audio.volume = 0.85;
+    const promise = els.audio.play();
+    if (promise && typeof promise.catch === 'function') {
+      promise.catch(() => showBubble('这首歌暂时放不出来，换一首试试？', 'sleepy', 3600));
+    }
+    showBubble(`🎵 ${track.title}${track.artist ? ` - ${track.artist}` : ''}`, 'happy', 4200);
+    setMusicDot(true);
+    sendMusicState();
+  }
+
+  function handleMusicCommand(action) {
+    if (!els.audio) return;
+    if (action === 'stop') {
+      els.audio.pause();
+      els.audio.removeAttribute('src');
+      els.audio.load();
+      music.track = null;
+      setMusicDot(false);
+      sendMusicState({ playing: false, currentTime: 0, duration: 0, track: null });
+      return;
+    }
+    if (action === 'pause') {
+      els.audio.pause();
+      return;
+    }
+    if (action === 'resume') {
+      if (els.audio.src) els.audio.play().catch(() => {});
+      return;
+    }
+    if (action === 'toggle') {
+      if (els.audio.paused) els.audio.play().catch(() => {});
+      else els.audio.pause();
+    }
+  }
+
+  if (els.audio) {
+    els.audio.addEventListener('play', () => {
+      setMusicDot(true);
+      sendMusicState({ playing: true });
+    });
+    els.audio.addEventListener('pause', () => {
+      setMusicDot(false);
+      sendMusicState({ playing: false });
+    });
+    els.audio.addEventListener('ended', () => {
+      setMusicDot(false);
+      sendMusicState({ playing: false, ended: true });
+      showBubble('放完啦，还想听什么？', 'happy', 3000);
+    });
+    els.audio.addEventListener('timeupdate', () => {
+      const now = Date.now();
+      if (now - music.lastSentAt < 900) return;
+      music.lastSentAt = now;
+      sendMusicState();
+    });
+    els.audio.addEventListener('error', () => {
+      showBubble('音频加载失败了…', 'sleepy', 3000);
+    });
   }
 
   function schedulePat() {
@@ -227,6 +330,16 @@
   api.onPat(() => {
     spawnHearts(4);
     setMood('love', 1200);
+  });
+
+  api.onPetSticker((payload) => showSticker(payload));
+
+  api.onMusicPlay((payload) => {
+    if (payload && payload.track) playTrack(payload.track);
+  });
+
+  api.onMusicCommand((payload) => {
+    if (payload && payload.action) handleMusicCommand(payload.action);
   });
 
   api.onPomodoroTick(renderPomodoro);

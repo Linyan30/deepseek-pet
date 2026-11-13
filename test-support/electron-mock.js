@@ -243,6 +243,9 @@ function installElectronMock(options) {
       createEmpty: () => ({ isEmpty: () => true })
     },
     shell: { openExternal: async () => {} },
+    clipboard: {
+      readText: () => '（测试）剪贴板里的内容'
+    },
     Notification: class Notification {
       static isSupported() {
         return false;

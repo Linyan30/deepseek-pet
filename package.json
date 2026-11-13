@@ -1,6 +1,6 @@
 {
   "name": "deepseek-pet",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "一只住在桌面上的 DeepSeek 鲸鱼娘：可拖拽、可聊天、可打包成免安装 exe",
   "main": "main.js",
   "private": true,

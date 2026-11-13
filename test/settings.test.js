@@ -89,6 +89,34 @@ test('形象风格只接受 girl / whale', () => {
   assert.equal(sanitizeSettings({}).petStyle, 'girl');
 });
 
+test('整点报时默认开启，可关闭', () => {
+  assert.equal(sanitizeSettings({}).hourlyChime, true);
+  assert.equal(sanitizeSettings({ hourlyChime: false }).hourlyChime, false);
+  assert.equal(sanitizeSettings({ hourlyChime: 'no' }).hourlyChime, true);
+});
+
+test('联网搜索与图片模型配置校验', () => {
+  const settings = sanitizeSettings({
+    searchProvider: 'tavily',
+    tavilyApiKey: '  tvly-x  ',
+    searxngUrl: 'https://searx.example.com/',
+    searchResults: 99,
+    visionModel: 'gpt-4o',
+    musicEnabled: false,
+    musicResults: 5
+  });
+  assert.equal(settings.searchProvider, 'tavily');
+  assert.equal(settings.tavilyApiKey, 'tvly-x');
+  assert.equal(settings.searxngUrl, 'https://searx.example.com');
+  assert.equal(settings.searchResults, 10);
+  assert.equal(settings.visionModel, 'gpt-4o');
+  assert.equal(settings.musicEnabled, false);
+  assert.equal(settings.musicResults, 5);
+
+  assert.equal(sanitizeSettings({ searchProvider: 'google' }).searchProvider, 'duckduckgo');
+  assert.equal(sanitizeSettings({ searxngUrl: 'ftp://bad' }).searxngUrl, '');
+});
+
 test('API Key 只保留一份，且长度受限', () => {
   const settings = sanitizeSettings({ apiKey: `  sk-${'x'.repeat(1000)}  ` });
   assert.equal(settings.apiKey.length, 400);

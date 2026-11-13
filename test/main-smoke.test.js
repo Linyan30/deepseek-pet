@@ -93,6 +93,27 @@ test('没有 API Key 时用内置台词流式回复，不会发网络请求', as
   assert.match(reply, /API Key|设置/);
 });
 
+test('带图片的消息在未配置 Key 时也能走离线回复', async () => {
+  const before = chatWindow.webContents.sent.filter((item) => item.channel === 'chat:done').length;
+  mock.ipcMain.emitFrom('chat:send', chatWindow.webContents.id, {
+    messages: [
+      { role: 'user', content: '看看这张图', image: 'data:image/png;base64,iVBORw0KGgo=' }
+    ],
+    search: false
+  });
+
+  const done = await waitFor(() => {
+    const list = chatWindow.webContents.sent.filter((item) => item.channel === 'chat:done');
+    return list.length > before ? list[list.length - 1] : null;
+  });
+  assert.ok(done);
+});
+
+test('搜索测试接口只允许设置窗口调用', async () => {
+  const denied = await mock.ipcMain.invoke('search:test', petWindow.webContents.id, { query: 'x' });
+  assert.equal(denied.ok, false);
+});
+
 test('设置窗口保存后立即生效：名字、大小、密钥', async () => {
   mock.ipcMain.emitFrom('window:settings', petWindow.webContents.id);
   await wait(50);
@@ -106,11 +127,13 @@ test('设置窗口保存后立即生效：名字、大小、密钥', async () =>
     petName: '鲸鲸',
     scale: 1.2,
     apiKey: 'sk-test',
-    workMinutes: 30
+    workMinutes: 30,
+    visionModel: 'gpt-4o'
   });
 
   assert.equal(result.ok, true);
   assert.equal(result.settings.apiKey, 'sk-test');
+  assert.equal(result.settings.visionModel, 'gpt-4o');
   assert.equal(petWindow.bounds.width, 252);
   assert.equal(petWindow.bounds.height, 348);
   assert.equal(petWindow.zoomFactor, 1.2);
@@ -130,6 +153,53 @@ test('设置窗口保存后立即生效：名字、大小、密钥', async () =>
 test('宠物窗口没有权限修改设置', async () => {
   const denied = await mock.ipcMain.invoke('settings:save', petWindow.webContents.id, { petName: 'hacked' });
   assert.equal(denied.ok, false);
+});
+
+test('亲密度：启动见面分、摸头加分、冷却期内不重复加', async () => {
+  const initial = await mock.ipcMain.invoke('state:get', petWindow.webContents.id);
+  assert.ok(initial, '宠物应该能读取亲密度');
+  assert.ok(initial.affinity >= 2, '启动时会有一点点见面分');
+  assert.equal(initial.level, 1);
+
+  mock.ipcMain.emitFrom('state:interact', petWindow.webContents.id, 'pat');
+  const afterPat = await mock.ipcMain.invoke('state:get', petWindow.webContents.id);
+  assert.equal(afterPat.affinity, initial.affinity + 1);
+  assert.equal(afterPat.stats.pats, 1);
+
+  mock.ipcMain.emitFrom('state:interact', petWindow.webContents.id, 'pat');
+  const afterSecond = await mock.ipcMain.invoke('state:get', petWindow.webContents.id);
+  assert.equal(afterSecond.affinity, afterPat.affinity, '冷却期内不应该重复加分');
+});
+
+test('托盘菜单显示亲密度，并提供快捷指令与整点报时', () => {
+  const menu = mock.menus[mock.menus.length - 1];
+  const labels = menu.template.map((item) => item.label).filter(Boolean);
+  assert.ok(labels.some((label) => label.startsWith('亲密度 Lv.')), '托盘应显示亲密度');
+  assert.ok(labels.includes('快捷指令'));
+  assert.ok(labels.includes('整点报时'));
+});
+
+test('随机表情包会发到聊天窗口，且图片存在', () => {
+  const before = chatWindow.webContents.sent.filter((item) => item.channel === 'chat:sticker').length;
+  mock.ipcMain.emitFrom('sticker:random', chatWindow.webContents.id);
+  const stickers = chatWindow.webContents.sent.filter((item) => item.channel === 'chat:sticker');
+  assert.equal(stickers.length, before + 1);
+
+  const payload = stickers[stickers.length - 1].payload;
+  const file = path.join(__dirname, '..', 'src', 'renderer', 'assets', 'stickers', `${payload.id}.png`);
+  assert.ok(fs.existsSync(file), `表情文件不存在：${payload.id}`);
+});
+
+test('剪贴板只开放给聊天窗口读取', async () => {
+  const text = await mock.ipcMain.invoke('clipboard:read', chatWindow.webContents.id);
+  assert.match(text, /剪贴板/);
+  const denied = await mock.ipcMain.invoke('clipboard:read', petWindow.webContents.id);
+  assert.equal(denied, '');
+});
+
+test('其他来源拿不到亲密度数据', async () => {
+  const denied = await mock.ipcMain.invoke('state:get', 999999);
+  assert.equal(denied, null);
 });
 
 test('拖拽会按像素移动窗口，鼠标穿透开关生效', () => {

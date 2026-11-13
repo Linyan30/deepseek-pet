@@ -11,13 +11,19 @@ const {
   nativeImage,
   shell,
   Notification,
-  globalShortcut
+  globalShortcut,
+  clipboard
 } = require('electron');
 
 const { DEFAULT_SETTINGS, loadSettings, saveSettings, sanitizeSettings } = require('./src/main/settings');
 const { streamChat, testConnection } = require('./src/main/chat');
 const { Pomodoro, PHASE, formatClock } = require('./src/main/pomodoro');
+const { createStateStore } = require('./src/main/state');
+const { searchWeb, buildSearchContext } = require('./src/main/search');
+const { searchMusic } = require('./src/main/music');
 const { LINES, pick } = require('./src/shared/quips');
+const { STICKERS, findSticker, randomSticker, maybeSticker } = require('./src/shared/stickers');
+const { COMMANDS, findCommand, buildPrompt } = require('./src/shared/commands');
 const {
   CHAT_SIZE,
   SETTINGS_SIZE,
@@ -42,6 +48,8 @@ try {
 
 let settings = { ...DEFAULT_SETTINGS };
 let settingsFile = '';
+let stateStore = null;
+let stateFile = '';
 let petWin = null;
 let chatWin = null;
 let settingsWin = null;
@@ -50,10 +58,15 @@ let pomodoro = null;
 let activeStream = null;
 let waterTimer = null;
 let idleTimer = null;
+let chimeTimer = null;
 let positionTimer = null;
 let lastTickSecond = -1;
 let lastBubbleText = '';
 let lastBubbleAt = 0;
+let lastStickerAt = 0;
+let currentTrack = null;
+let musicPlaying = false;
+let lastMusicTrayUpdate = 0;
 
 // ---------------------------------------------------------------- 基础工具
 
@@ -112,6 +125,130 @@ function persistPosition() {
   }, 400);
 }
 
+// ---------------------------------------------------------------- 亲密度 / 表情包
+
+function stateSnapshot() {
+  const stickers = STICKERS.map((sticker) => ({
+    id: sticker.id,
+    file: sticker.file,
+    caption: sticker.caption,
+    minLevel: sticker.minLevel,
+    unlocked: false
+  }));
+
+  if (!stateStore) {
+    return {
+      affinity: 0,
+      level: 1,
+      levelName: '初次见面',
+      progress: 0,
+      nextThreshold: 80,
+      nextLevelName: '有点熟了',
+      toNext: 80,
+      stats: { pats: 0, chats: 0, pomodoros: 0, days: 0 },
+      daily: { date: '', gained: 0, counts: {} },
+      stickers
+    };
+  }
+
+  const snapshot = stateStore.snapshot();
+  stickers.forEach((sticker) => {
+    sticker.unlocked = snapshot.level >= sticker.minLevel;
+  });
+  return { ...snapshot, stickers };
+}
+
+function broadcastState() {
+  const snapshot = stateSnapshot();
+  sendPet('state:changed', snapshot);
+  sendChat('state:changed', snapshot);
+  sendSettings('state:changed', snapshot);
+  updateTrayMenu();
+}
+
+function announceLevelUp(snapshot) {
+  bubble(`亲密度升到 Lv.${snapshot.level} 啦！`, 'love', 5600);
+  sendStickerToPet('love', 3200);
+  notify(`${settings.petName} · 亲密度提升`, `现在是 Lv.${snapshot.level}「${snapshot.levelName}」`);
+}
+
+/** 记录一次互动（摸头 / 聊天 / 完成番茄），到等级就庆祝。 */
+function registerInteraction(type) {
+  if (!stateStore) return null;
+  const result = stateStore.add(type);
+  if (result.added > 0) {
+    broadcastState();
+    if (result.leveledUp) announceLevelUp(result);
+  }
+  return result;
+}
+
+function sendStickerToPet(id, duration = 2600) {
+  if (!findSticker(id)) return;
+  sendPet('pet:sticker', { id, duration });
+}
+
+/** 回复完成后，有概率再补一张表情包（亲密度越高越常见）。 */
+function maybeChatSticker(text) {
+  if (!stateStore) return;
+  const snapshot = stateStore.snapshot();
+  const now = Date.now();
+  if (now - lastStickerAt < 15000) return;
+
+  const sticker = maybeSticker(text, snapshot.level);
+  if (!sticker) return;
+
+  lastStickerAt = now;
+  sendChat('chat:sticker', { id: sticker.id, caption: sticker.caption });
+}
+
+function whenChatReady(callback) {
+  if (!isAlive(chatWin)) return;
+  if (chatWin.webContents.isLoading()) {
+    chatWin.webContents.once('did-finish-load', callback);
+  } else {
+    callback();
+  }
+}
+
+/** 托盘 / 右键菜单里的快捷指令：自动带上剪贴板内容。 */
+function runQuickCommand(id) {
+  const command = findCommand(id);
+  if (!command) return;
+
+  if (command.sticker) {
+    const snapshot = stateSnapshot();
+    const sticker = randomSticker(snapshot.level) || findSticker('happy');
+    if (!sticker) return;
+    openChat();
+    whenChatReady(() => {
+      sendChat('chat:sticker', { id: sticker.id, caption: sticker.caption });
+      sendChat('chat:focus', {});
+    });
+    sendStickerToPet(sticker.id, 2600);
+    bubble(sticker.caption, 'happy', 2400);
+    return;
+  }
+
+  let content = '';
+  try {
+    content = String(clipboard.readText() || '').trim().slice(0, 4000);
+  } catch {
+    content = '';
+  }
+
+  const prompt = buildPrompt(command, content);
+  openChat();
+  whenChatReady(() => {
+    sendChat('chat:prefill', {
+      text: prompt,
+      command: command.id,
+      fromClipboard: Boolean(content)
+    });
+    sendChat('chat:focus', {});
+  });
+}
+
 // ---------------------------------------------------------------- 设置生效
 
 function applySettings(patch, { silent = false } = {}) {
@@ -150,6 +287,10 @@ function applySettings(patch, { silent = false } = {}) {
 
   if (next.idleTalk !== previous.idleTalk) {
     scheduleIdleTalk();
+  }
+
+  if (next.hourlyChime !== previous.hourlyChime) {
+    scheduleHourlyChime();
   }
 
   if (
@@ -217,6 +358,7 @@ function createPetWindow() {
       sandbox: true,
       spellcheck: false,
       backgroundThrottling: false,
+      autoplayPolicy: 'no-user-gesture-required',
       zoomFactor: settings.scale
     }
   });
@@ -297,6 +439,7 @@ function ensureChatWindow() {
 
   chatWin.webContents.on('did-finish-load', () => {
     sendChat('settings:changed', publicSettings());
+    sendChat('state:changed', stateSnapshot());
   });
 
   return chatWin;
@@ -348,13 +491,7 @@ function openChat() {
   if (win.isMinimized()) win.restore();
   win.show();
   win.focus();
-  if (win.webContents.isLoading()) {
-    win.webContents.once('did-finish-load', () => {
-      sendChat('chat:focus', {});
-    });
-  } else {
-    sendChat('chat:focus', {});
-  }
+  whenChatReady(() => sendChat('chat:focus', {}));
 }
 
 function openSettings() {
@@ -392,6 +529,7 @@ function quitApp() {
     if (pomodoro) pomodoro.dispose();
     clearTimeout(waterTimer);
     clearTimeout(idleTimer);
+    clearTimeout(chimeTimer);
     clearTimeout(positionTimer);
     if (activeStream) activeStream.abort();
   } catch {
@@ -408,6 +546,7 @@ function updateTrayMenu() {
   const timerLabel = snapshot && snapshot.running
     ? `番茄钟 ${formatClock(snapshot.remaining)}`
     : '番茄钟';
+  const affinity = stateSnapshot();
 
   const template = [
     {
@@ -419,6 +558,10 @@ function updateTrayMenu() {
       click: () => togglePet()
     },
     { type: 'separator' },
+    {
+      label: `亲密度 Lv.${affinity.level} · ${affinity.affinity}`,
+      enabled: false
+    },
     {
       label: timerLabel,
       submenu: [
@@ -445,6 +588,19 @@ function updateTrayMenu() {
       ]
     },
     {
+      label: '快捷指令',
+      submenu: COMMANDS.map((command) => ({
+        label: `${command.icon} ${command.label}`,
+        click: () => runQuickCommand(command.id)
+      }))
+    },
+    {
+      label: '整点报时',
+      type: 'checkbox',
+      checked: settings.hourlyChime,
+      click: (item) => applySettings({ hourlyChime: item.checked })
+    },
+    {
       label: '喝水提醒',
       type: 'checkbox',
       checked: settings.waterReminder,
@@ -466,9 +622,10 @@ function updateTrayMenu() {
   ];
 
   tray.setContextMenu(Menu.buildFromTemplate(template));
-  const tip = snapshot && snapshot.running
-    ? `${settings.petName} · 番茄钟 ${formatClock(snapshot.remaining)}`
-    : `${settings.petName} · 点我聊天`;
+  let tip = `${settings.petName} · Lv.${affinity.level} · 点我聊天`;
+  if (snapshot && snapshot.running) {
+    tip = `${settings.petName} · Lv.${affinity.level} · 番茄钟 ${formatClock(snapshot.remaining)}`;
+  }
   tray.setToolTip(tip);
 }
 
@@ -511,6 +668,48 @@ function scheduleIdleTalk() {
   }, delay);
 }
 
+/** 整点报时的文案：几点 + 问候 + 到点提醒。 */
+function chimeText(date) {
+  const hour = date.getHours();
+  const time = `${String(hour).padStart(2, '0')}:00`;
+  let part = '晚上好';
+  if (hour < 5) part = '夜深了';
+  else if (hour < 11) part = '上午好';
+  else if (hour < 14) part = '中午好';
+  else if (hour < 18) part = '下午好';
+
+  const extras = {
+    9: '该开始今天的第一件事啦',
+    12: '记得吃午饭',
+    15: '起来活动一下肩颈',
+    18: '该吃晚饭啦',
+    23: '早点睡，别熬夜'
+  };
+  const extra = extras[hour] || '';
+  return `现在是 ${time}，${part}～${extra ? ` ${extra}` : ''}`;
+}
+
+/** 对齐到下一个整点，避免定时器漂移；系统睡眠唤醒后会重新对齐。 */
+function scheduleHourlyChime() {
+  clearTimeout(chimeTimer);
+  chimeTimer = null;
+  if (!settings.hourlyChime) return;
+
+  const now = new Date();
+  const next = new Date(now.getTime());
+  next.setMinutes(0, 0, 0);
+  next.setHours(next.getHours() + 1);
+  const delay = Math.max(5000, next.getTime() - now.getTime() + 800);
+
+  chimeTimer = setTimeout(() => {
+    chimeTimer = null;
+    if (isAlive(petWin) && petWin.isVisible()) {
+      bubble(chimeText(new Date()), 'idle', 5600);
+    }
+    scheduleHourlyChime();
+  }, delay);
+}
+
 function startPomodoro() {
   pomodoro = new Pomodoro({
     workMinutes: settings.workMinutes,
@@ -526,6 +725,7 @@ function startPomodoro() {
       if (phase === PHASE.WORK) {
         bubble(pick(LINES.workEnd), 'happy', 7000);
         notify(settings.petName, pick(LINES.workEnd));
+        registerInteraction('pomodoro');
       } else {
         bubble(pick(LINES.breakEnd), 'idle', 6000);
         notify(settings.petName, pick(LINES.breakEnd));
@@ -538,19 +738,56 @@ function startPomodoro() {
 
 // ---------------------------------------------------------------- 聊天
 
+const MAX_IMAGE_CHARS = 8 * 1024 * 1024;
+const IMAGE_DATA_URL = /^data:image\/(?:png|jpe?g|webp|gif);base64,[A-Za-z0-9+/=\s]+$/;
+
 function sanitizeMessages(input) {
   if (!Array.isArray(input)) return [];
   return input
     .slice(-24)
     .filter((item) => item && typeof item.content === 'string')
-    .map((item) => ({
-      role: item.role === 'assistant' ? 'assistant' : 'user',
-      content: item.content.trim().slice(0, 8000)
-    }))
-    .filter((item) => item.content.length > 0);
+    .map((item) => {
+      const message = {
+        role: item.role === 'assistant' ? 'assistant' : 'user',
+        content: item.content.trim().slice(0, 8000)
+      };
+      if (
+        typeof item.image === 'string' &&
+        item.image.length <= MAX_IMAGE_CHARS &&
+        IMAGE_DATA_URL.test(item.image)
+      ) {
+        message.image = item.image;
+      }
+      return message;
+    })
+    .filter((item) => item.content.length > 0 || item.image);
 }
 
-function offlineReply() {
+/** 转成 OpenAI 多模态格式；只保留最后一张图，避免上下文过大。 */
+function toApiMessages(messages) {
+  let lastImageIndex = -1;
+  messages.forEach((message, index) => {
+    if (message.image) lastImageIndex = index;
+  });
+
+  return messages.map((message, index) => {
+    if (!message.image) {
+      return { role: message.role, content: message.content };
+    }
+    if (index === lastImageIndex) {
+      return {
+        role: message.role,
+        content: [
+          { type: 'text', text: message.content || '请看看这张图片。' },
+          { type: 'image_url', image_url: { url: message.image } }
+        ]
+      };
+    }
+    return { role: message.role, content: `${message.content}\n（这张图片已省略）` };
+  });
+}
+
+function offlineReply(userText) {
   const text = pick(LINES.offline);
   let index = 0;
   const timer = setInterval(() => {
@@ -563,6 +800,7 @@ function offlineReply() {
     if (index >= text.length) {
       clearInterval(timer);
       sendChat('chat:done', { offline: true });
+      maybeChatSticker(userText);
     }
   }, 45);
   return {
@@ -573,29 +811,59 @@ function offlineReply() {
   };
 }
 
-function handleChatSend(event, payload) {
+async function handleChatSend(event, payload) {
   if (!isAlive(chatWin) || event.sender.id !== chatWin.webContents.id) return;
   const messages = sanitizeMessages(payload && payload.messages);
   if (messages.length === 0) return;
+  const lastMessage = messages[messages.length - 1];
+  const userText = lastMessage.content || '（发了一张图片）';
+  const hasImage = messages.some((message) => Boolean(message.image));
+
+  registerInteraction('chat');
 
   if (activeStream) {
     activeStream.abort();
     activeStream = null;
   }
 
+  // 需要联网时先搜索，再把结果作为上下文交给模型（发图片时不搜）
+  let searchPayload = null;
+  if (payload && payload.search && !hasImage) {
+    const result = await searchWeb({ settings, query: userText, limit: settings.searchResults });
+    searchPayload = {
+      query: userText,
+      provider: result.provider,
+      results: result.results,
+      answer: result.answer,
+      error: result.error || ''
+    };
+    sendChat('chat:search', searchPayload);
+  }
+
   if (!settings.apiKey) {
-    activeStream = offlineReply();
+    activeStream = offlineReply(userText);
     return;
   }
 
-  const withSystem = [
-    { role: 'system', content: settings.systemPrompt },
-    ...messages
-  ];
+  const withSystem = [{ role: 'system', content: settings.systemPrompt }];
+  if (searchPayload && searchPayload.results.length > 0) {
+    withSystem.push({
+      role: 'system',
+      content:
+        `下面是刚刚联网搜索到的资料（${new Date().toLocaleString()}）。` +
+        '回答时优先使用这些资料，并在引用处用 [1] [2] 这样的序号标注来源；资料不足时直接说明。\n\n' +
+        buildSearchContext(searchPayload)
+    });
+  }
+  withSystem.push(...toApiMessages(messages));
+
+  // 发图片时优先用「图片识别模型」，没填就用主模型
+  const requestSettings =
+    hasImage && settings.visionModel ? { ...settings, model: settings.visionModel } : settings;
 
   let produced = false;
   activeStream = streamChat({
-    settings,
+    settings: requestSettings,
     messages: withSystem,
     onDelta: (delta) => {
       produced = true;
@@ -608,10 +876,15 @@ function handleChatSend(event, payload) {
       activeStream = null;
       sendChat('chat:done', {});
       if (produced) bubble('✨', 'happy', 1600);
+      maybeChatSticker(userText);
     },
     onError: (message) => {
       activeStream = null;
-      sendChat('chat:error', { message });
+      const hint =
+        hasImage && !settings.visionModel
+          ? '\n当前模型可能不支持图片。可以在设置里填写「图片识别模型」，或换一个支持视觉的接口。'
+          : '';
+      sendChat('chat:error', { message: `${message}${hint}` });
       bubble('呜呜，我连不上服务器…', 'sleepy', 5000);
     }
   });
@@ -621,16 +894,29 @@ function handleChatSend(event, payload) {
 
 function showPetMenu(event) {
   if (!isAlive(petWin) || event.sender.id !== petWin.webContents.id) return;
+  const affinity = stateSnapshot();
   const menu = Menu.buildFromTemplate([
     { label: '和小鲸鱼聊天', click: () => openChat() },
     {
       label: '摸摸头',
       click: () => {
+        registerInteraction('pat');
         bubble(pick(LINES.click), 'happy', 3000);
         sendPet('pet:pat', {});
       }
     },
+    {
+      label: '快捷指令',
+      submenu: COMMANDS.map((command) => ({
+        label: `${command.icon} ${command.label}`,
+        click: () => runQuickCommand(command.id)
+      }))
+    },
     { type: 'separator' },
+    {
+      label: `亲密度 Lv.${affinity.level} · ${affinity.affinity}（${affinity.levelName}）`,
+      enabled: false
+    },
     {
       label: '番茄钟',
       submenu: [
@@ -655,6 +941,12 @@ function showPetMenu(event) {
           }
         }
       ]
+    },
+    {
+      label: '整点报时',
+      type: 'checkbox',
+      checked: settings.hourlyChime,
+      click: (item) => applySettings({ hourlyChime: item.checked })
     },
     {
       label: '喝水提醒',
@@ -699,6 +991,132 @@ function registerIpc() {
   });
 
   ipcMain.handle('pet:quips', () => LINES);
+
+  ipcMain.handle('state:get', (event) => {
+    const allowed = [petWin, chatWin, settingsWin].some(
+      (win) => isAlive(win) && event.sender.id === win.webContents.id
+    );
+    if (!allowed) return null;
+    return stateSnapshot();
+  });
+
+  ipcMain.on('state:interact', (event, type) => {
+    if (!isAlive(petWin) || event.sender.id !== petWin.webContents.id) return;
+    if (type !== 'pat') return;
+    const result = registerInteraction('pat');
+    const level = stateStore ? stateStore.snapshot().level : 1;
+    if (result && result.added > 0 && level >= 2 && Math.random() < 0.25) {
+      const sticker = randomSticker(level);
+      if (sticker) sendStickerToPet(sticker.id, 2200);
+    }
+  });
+
+  ipcMain.handle('clipboard:read', (event) => {
+    if (!isAlive(chatWin) || event.sender.id !== chatWin.webContents.id) return '';
+    try {
+      return String(clipboard.readText() || '').slice(0, 4000);
+    } catch {
+      return '';
+    }
+  });
+
+  ipcMain.on('sticker:random', (event) => {
+    if (!isAlive(chatWin) || event.sender.id !== chatWin.webContents.id) return;
+    const level = stateStore ? stateStore.snapshot().level : 1;
+    const sticker = randomSticker(level) || findSticker('happy');
+    if (!sticker) return;
+    sendChat('chat:sticker', { id: sticker.id, caption: sticker.caption });
+    sendStickerToPet(sticker.id, 2400);
+  });
+
+  ipcMain.handle('search:web', async (event, query) => {
+    if (!isAlive(chatWin) || event.sender.id !== chatWin.webContents.id) {
+      return { ok: false, provider: 'none', query: '', results: [], answer: '', error: '无权操作' };
+    }
+    const text = String(query || '').trim().slice(0, 300);
+    if (!text) {
+      return { ok: false, provider: 'none', query: '', results: [], answer: '', error: '搜索内容不能为空' };
+    }
+    return searchWeb({ settings, query: text, limit: settings.searchResults });
+  });
+
+  ipcMain.handle('search:test', async (event, payload) => {
+    if (!isAlive(settingsWin) || event.sender.id !== settingsWin.webContents.id) {
+      return { ok: false, provider: 'none', results: [], answer: '', error: '无权操作' };
+    }
+    const draft = sanitizeSettings({ ...settings, ...(payload || {}) });
+    const query = String((payload && payload.query) || 'DeepSeek').slice(0, 100);
+    return searchWeb({ settings: draft, query, limit: 3 });
+  });
+
+  ipcMain.handle('search:music', async (event, query) => {
+    if (!isAlive(chatWin) || event.sender.id !== chatWin.webContents.id) {
+      return { ok: false, query: '', source: 'none', results: [], error: '无权操作' };
+    }
+    if (!settings.musicEnabled) {
+      return { ok: false, query: '', source: 'none', results: [], error: '音乐功能已在设置里关闭' };
+    }
+    const text = String(query || '').trim().slice(0, 200);
+    if (!text) {
+      return { ok: false, query: '', source: 'none', results: [], error: '想听什么歌？' };
+    }
+    return searchMusic({ query: text, limit: settings.musicResults });
+  });
+
+  ipcMain.on('music:play', (event, track) => {
+    if (!isAlive(chatWin) || event.sender.id !== chatWin.webContents.id) return;
+    if (!settings.musicEnabled) return;
+    if (!track || typeof track !== 'object') return;
+
+    const preview = String(track.preview || '');
+    if (!/^https?:\/\//i.test(preview)) return;
+
+    currentTrack = {
+      title: String(track.title || '未知歌曲').slice(0, 120),
+      artist: String(track.artist || '').slice(0, 80),
+      cover: /^https?:\/\//i.test(String(track.cover || '')) ? String(track.cover) : '',
+      preview,
+      duration: Math.max(1, Math.min(600, Number(track.duration) || 30)),
+      source: String(track.source || '').slice(0, 20)
+    };
+    musicPlaying = true;
+
+    sendPet('music:play', { track: currentTrack });
+    sendChat('music:state', {
+      playing: true,
+      currentTime: 0,
+      duration: currentTrack.duration,
+      track: currentTrack
+    });
+    updateTrayMenu();
+  });
+
+  ipcMain.on('music:command', (event, action) => {
+    const fromChat = isAlive(chatWin) && event.sender.id === chatWin.webContents.id;
+    const fromPet = isAlive(petWin) && event.sender.id === petWin.webContents.id;
+    if (!fromChat && !fromPet) return;
+
+    const command = ['toggle', 'pause', 'resume', 'stop'].includes(action) ? action : 'toggle';
+    if (command === 'stop') {
+      musicPlaying = false;
+      currentTrack = null;
+      sendChat('music:state', { playing: false, stopped: true });
+      updateTrayMenu();
+    }
+    sendPet('music:command', { action: command });
+  });
+
+  ipcMain.on('music:state', (event, state) => {
+    if (!isAlive(petWin) || event.sender.id !== petWin.webContents.id) return;
+    const payload = state && typeof state === 'object' ? state : {};
+    const wasPlaying = musicPlaying;
+    if (typeof payload.playing === 'boolean') musicPlaying = payload.playing;
+    if (payload.track && typeof payload.track === 'object') {
+      currentTrack = { ...currentTrack, ...payload.track };
+    }
+    sendChat('music:state', payload);
+    if (wasPlaying !== musicPlaying) updateTrayMenu();
+  });
 
   ipcMain.handle('api:test', async (event, patch) => {
     if (!isAlive(settingsWin) || event.sender.id !== settingsWin.webContents.id) {
@@ -805,6 +1223,8 @@ if (!gotLock) {
     app.setAppUserModelId(APP_ID);
     settingsFile = path.join(app.getPath('userData'), 'settings.json');
     settings = loadSettings(settingsFile);
+    stateFile = path.join(path.dirname(settingsFile), 'state.json');
+    stateStore = createStateStore(stateFile);
 
     startPomodoro();
     registerIpc();
@@ -812,7 +1232,10 @@ if (!gotLock) {
     createTray();
     scheduleWaterReminder();
     scheduleIdleTalk();
+    scheduleHourlyChime();
     applyAutoLaunch();
+    stateStore.greet();
+    broadcastState();
 
     try {
       globalShortcut.register(TOGGLE_SHORTCUT, () => togglePet());
@@ -839,6 +1262,7 @@ if (!gotLock) {
     if (pomodoro) pomodoro.dispose();
     clearTimeout(waterTimer);
     clearTimeout(idleTimer);
+    clearTimeout(chimeTimer);
     clearTimeout(positionTimer);
   });
 }

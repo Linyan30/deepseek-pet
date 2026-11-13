@@ -18,6 +18,7 @@
     alwaysOnTop: true,
     autoLaunch: false,
     idleTalk: true,
+    hourlyChime: true,
     waterReminder: true,
     waterInterval: 60,
     workMinutes: 25,
@@ -68,8 +69,83 @@
         return { ok: true, settings: { ...settings } };
       },
       testApi: async () => ({ ok: false, message: '浏览器预览模式无法连接 API。', models: [] }),
-      getVersion: async () => ({ version: '1.0.0', electron: 'preview', platform: 'browser' }),
+      getVersion: async () => ({ version: '1.1.0', electron: 'preview', platform: 'browser' }),
       getQuips: async () => DEMO_LINES,
+      getState: async () => ({
+        affinity: 132,
+        level: 2,
+        levelName: '有点熟了',
+        progress: 0.325,
+        nextThreshold: 240,
+        nextLevelName: '好朋友',
+        toNext: 108,
+        stats: { pats: 18, chats: 9, pomodoros: 2, days: 4 },
+        daily: { date: '2026-11-13', gained: 12, counts: { pat: 5, chat: 3 } },
+        stickers: (window.DSStickers ? window.DSStickers.STICKERS : []).map((sticker) => ({
+          id: sticker.id,
+          file: sticker.file,
+          caption: sticker.caption,
+          minLevel: sticker.minLevel,
+          unlocked: 2 >= sticker.minLevel
+        }))
+      }),
+      reportPat: () => emit('state:changed', {}),
+      readClipboard: async () => '（预览）这是一段从剪贴板读到的示例文字。',
+      requestSticker: () => emit('chat:sticker', { id: 'happy', caption: '好耶！' }),
+      onStateChanged: on('state:changed'),
+      onChatSticker: on('chat:sticker'),
+      onChatPrefill: on('chat:prefill'),
+      onPetSticker: on('pet:sticker'),
+      searchWeb: async (query) => ({
+        ok: true,
+        provider: 'duckduckgo',
+        query,
+        answer: '',
+        error: '',
+        results: [
+          {
+            title: 'DeepSeek 官网',
+            url: 'https://www.deepseek.com',
+            snippet: '（预览）DeepSeek 官方站点，提供模型与开放平台入口。'
+          },
+          {
+            title: 'DeepSeek 开放平台',
+            url: 'https://platform.deepseek.com',
+            snippet: '（预览）申请 API Key、查看用量和计费的地方。'
+          }
+        ]
+      }),
+      searchMusic: async (query) => ({
+        ok: true,
+        query,
+        source: 'deezer',
+        error: '',
+        results: [
+          {
+            id: 'preview-1',
+            title: `${query}（预览歌曲）`,
+            artist: '小鲸鱼',
+            album: 'Desktop Pet',
+            cover: '',
+            preview: 'https://example.com/preview.mp3',
+            duration: 30,
+            source: 'deezer'
+          }
+        ]
+      }),
+      playMusic: (track) => emit('music:state', { playing: true, currentTime: 0, duration: 30, track }),
+      musicCommand: () => {},
+      musicState: () => {},
+      testSearch: async () => ({
+        ok: true,
+        provider: 'duckduckgo',
+        error: '',
+        results: [{ title: 'DeepSeek', url: 'https://www.deepseek.com', snippet: '（预览）搜索测试成功。' }]
+      }),
+      onMusicPlay: on('music:play'),
+      onMusicCommand: on('music:command'),
+      onChatSearch: on('chat:search'),
+      onMusicState: on('music:state'),
       setIgnoreMouse: () => {},
       dragBy: () => {},
       dragEnd: () => {},

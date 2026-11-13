@@ -54,6 +54,8 @@ def render(chrome: str, target: str, width: int, height: int, background: str, s
         "pet": "../src/renderer/pet.html",
         "chat": "../src/renderer/chat.html?demo=1",
         "settings": "../src/renderer/settings.html",
+        "chat-image": "../src/renderer/chat.html?demo=image",
+        "chat-search": "../src/renderer/chat.html?demo=search",
     }[target]
 
     url = f"file:///{HARNESS.as_posix()}?src={src}&w={width}&h={height}"
@@ -92,6 +94,8 @@ def main() -> int:
     render(chrome, "pet", 210, 290, "00000000")
     render(chrome, "chat", 380, 540, "ffffffff")
     render(chrome, "settings", 420, 640, "ffffffff")
+    render(chrome, "chat-image", 380, 540, "ffffffff")
+    render(chrome, "chat-search", 380, 540, "ffffffff")
 
     # 应用图标：用鲸鱼娘头像合成，再转出 ico / 托盘图
     subprocess.run([sys.executable, str(ROOT / "scripts" / "make-logo.py")], check=True)

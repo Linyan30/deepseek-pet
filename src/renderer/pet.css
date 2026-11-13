@@ -411,6 +411,62 @@ body {
   opacity: 1;
 }
 
+/* 宠物身边弹出的表情包 */
+.pet-sticker {
+  position: absolute;
+  right: -2px;
+  bottom: 96px;
+  z-index: 9;
+  width: 108px;
+  height: auto;
+  border-radius: 12px;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(10px) scale(0.7) rotate(6deg);
+  transition: opacity 0.18s ease, transform 0.24s cubic-bezier(0.2, 0.9, 0.3, 1.4);
+  filter: drop-shadow(0 8px 14px rgba(30, 45, 110, 0.24));
+}
+
+.pet-sticker.show {
+  opacity: 1;
+  transform: translateY(0) scale(1) rotate(0deg);
+}
+
+/* 播放音乐时右上角的小音符 */
+.music-dot {
+  position: absolute;
+  top: 58px;
+  right: 8px;
+  z-index: 8;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(77, 107, 254, 0.22);
+  box-shadow: 0 4px 10px rgba(30, 45, 110, 0.18);
+  color: #4d6bfe;
+  font-size: 13px;
+  font-weight: 700;
+  pointer-events: none;
+  animation: music-bounce 1.4s ease-in-out infinite;
+}
+
+.music-dot.hidden {
+  display: none;
+}
+
+@keyframes music-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
 /* ------------------------------------------------------------ 番茄钟徽标 */
 
 .badge {

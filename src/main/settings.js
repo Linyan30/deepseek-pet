@@ -11,6 +11,7 @@ const DEFAULT_SETTINGS = Object.freeze({
   apiKey: '',
   baseUrl: 'https://api.deepseek.com',
   model: 'deepseek-chat',
+  visionModel: '',
   temperature: 1,
   systemPrompt:
     '你是“小深”，一只住在用户电脑桌面上的 DeepSeek 小鲸鱼。你说话简短、软萌、有元气，回答默认不超过 3 句话；用户明确要求详细解释时再展开。回答用中文，可以偶尔用颜文字，但不要滥用。',
@@ -20,10 +21,17 @@ const DEFAULT_SETTINGS = Object.freeze({
   alwaysOnTop: true,
   autoLaunch: false,
   idleTalk: true,
+  hourlyChime: true,
   waterReminder: true,
   waterInterval: 60,
   workMinutes: 25,
   breakMinutes: 5,
+  searchProvider: 'duckduckgo',
+  tavilyApiKey: '',
+  searxngUrl: '',
+  searchResults: 5,
+  musicEnabled: true,
+  musicResults: 8,
   position: null
 });
 
@@ -32,7 +40,9 @@ const LIMITS = Object.freeze({
   baseUrl: 300,
   model: 120,
   systemPrompt: 4000,
-  petName: 24
+  petName: 24,
+  tavilyApiKey: 300,
+  searxngUrl: 300
 });
 
 function cloneDefaults() {
@@ -69,6 +79,21 @@ function cleanBaseUrl(value, fallback) {
   }
 }
 
+/** 允许为空的可选地址（SearXNG 服务地址）。 */
+function cleanOptionalUrl(value, fallback) {
+  const raw = cleanString(value, LIMITS.searxngUrl, fallback || '');
+  if (!raw) return '';
+  const stripped = raw.replace(/\/+$/, '');
+  if (!/^https?:\/\/[^\s/]+/i.test(stripped)) return fallback || '';
+  try {
+    // eslint-disable-next-line no-new
+    new URL(stripped);
+    return stripped;
+  } catch {
+    return fallback || '';
+  }
+}
+
 function cleanPosition(value) {
   if (!value || typeof value !== 'object') return null;
   const x = Math.round(Number(value.x));
@@ -90,6 +115,7 @@ function sanitizeSettings(input, base = DEFAULT_SETTINGS) {
     apiKey: cleanString(source.apiKey, LIMITS.apiKey, base.apiKey),
     baseUrl: cleanBaseUrl(source.baseUrl, base.baseUrl),
     model: cleanString(source.model, LIMITS.model, base.model) || base.model,
+    visionModel: cleanString(source.visionModel, LIMITS.model, base.visionModel),
     temperature: cleanNumber(source.temperature, 0, 2, base.temperature),
     systemPrompt: cleanString(source.systemPrompt, LIMITS.systemPrompt, base.systemPrompt),
     petName: cleanString(source.petName, LIMITS.petName, base.petName) || base.petName,
@@ -98,10 +124,19 @@ function sanitizeSettings(input, base = DEFAULT_SETTINGS) {
     alwaysOnTop: cleanBool(source.alwaysOnTop, base.alwaysOnTop),
     autoLaunch: cleanBool(source.autoLaunch, base.autoLaunch),
     idleTalk: cleanBool(source.idleTalk, base.idleTalk),
+    hourlyChime: cleanBool(source.hourlyChime, base.hourlyChime),
     waterReminder: cleanBool(source.waterReminder, base.waterReminder),
     waterInterval: cleanNumber(source.waterInterval, 15, 240, base.waterInterval),
     workMinutes: cleanNumber(source.workMinutes, 1, 120, base.workMinutes),
     breakMinutes: cleanNumber(source.breakMinutes, 1, 60, base.breakMinutes),
+    searchProvider: ['tavily', 'searxng', 'duckduckgo'].includes(source.searchProvider)
+      ? source.searchProvider
+      : base.searchProvider,
+    tavilyApiKey: cleanString(source.tavilyApiKey, LIMITS.tavilyApiKey, base.tavilyApiKey),
+    searxngUrl: cleanOptionalUrl(source.searxngUrl, base.searxngUrl),
+    searchResults: cleanNumber(source.searchResults, 3, 10, base.searchResults),
+    musicEnabled: cleanBool(source.musicEnabled, base.musicEnabled),
+    musicResults: cleanNumber(source.musicResults, 3, 10, base.musicResults),
     position: 'position' in source ? cleanPosition(source.position) : base.position
   };
   return result;
@@ -122,10 +157,21 @@ function loadSettings(filePath) {
 
 function saveSettings(filePath, settings) {
   const clean = sanitizeSettings(settings);
+  const payload = `${JSON.stringify(clean, null, 2)}\n`;
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   const tmp = `${filePath}.tmp`;
-  fs.writeFileSync(tmp, `${JSON.stringify(clean, null, 2)}\n`, 'utf8');
-  fs.renameSync(tmp, filePath);
+  fs.writeFileSync(tmp, payload, 'utf8');
+  try {
+    fs.renameSync(tmp, filePath);
+  } catch {
+    // 某些环境不允许覆盖式 rename，退回直接写
+    fs.writeFileSync(filePath, payload, 'utf8');
+    try {
+      fs.unlinkSync(tmp);
+    } catch {
+      /* 临时文件可能已被清理 */
+    }
+  }
   return clean;
 }
 

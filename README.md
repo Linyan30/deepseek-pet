@@ -2,7 +2,7 @@
 
 <img src="docs/screenshots/logo.png" width="96" align="right" alt="小鲸鱼图标" />
 
-一只住在桌面角落的 DeepSeek 鲸鱼娘（也可以一键切回简约小鲸鱼）：可以拖动、可以摸头、可以聊天、会提醒你喝水和专注。
+一只住在桌面角落的 DeepSeek 鲸鱼娘（也可以一键切回简约小鲸鱼）：可以拖动、摸头、聊天，会联网搜索、能看你发的图片，还会提醒你喝水和专注、跟你攒亲密度、发表情包、整点报时。
 纯 Electron + 原生 JavaScript，**没有数据库、没有后端、没有运行时依赖**，打包后是一个免安装的小 exe，发给朋友就能用。
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-4d6bfe.svg)](LICENSE)
@@ -34,9 +34,13 @@
 ## 它长什么样
 
 <p>
-  <img src="docs/screenshots/pet.png" width="200" alt="宠物窗口" />
-  <img src="docs/screenshots/chat.png" width="360" alt="聊天窗口" />
-  <img src="docs/screenshots/settings.png" width="390" alt="设置窗口" />
+  <img src="docs/screenshots/pet.png" width="190" alt="宠物窗口" />
+  <img src="docs/screenshots/chat.png" width="340" alt="聊天窗口" />
+  <img src="docs/screenshots/settings.png" width="360" alt="设置窗口" />
+</p>
+<p>
+  <img src="docs/screenshots/chat-search.png" width="340" alt="联网搜索结果" />
+  <img src="docs/screenshots/chat-image.png" width="340" alt="发送图片" />
 </p>
 
 ## 功能一览
@@ -50,6 +54,10 @@
 - 托盘常驻：聊天、显示/隐藏、番茄钟、喝水提醒开关、设置、退出
 - 全局快捷键 `Ctrl / Cmd + Shift + Alt + D` 一键显示/隐藏
 - 待机浮动、开心蹦跳、喜欢时摇一摇、困困时冒 zzz，气泡跟着说话
+- **亲密度系统**：摸头 +1、聊天 +2、完成番茄 +5，每天最多 +60；6 个等级，升级会庆祝并送表情包
+- **8 张表情包**：随等级解锁，聊天时会看关键词主动发，摸头和升级也会出现
+- **整点报时**：每到整点冒个泡提醒时间，可在设置 / 托盘里关掉
+- **快捷指令**：聊天里的 ⚡ 面板、斜杠 `/翻译`、右键菜单都能用，自动带上剪贴板内容
 - 可调大小（70% ~ 160%）、可开机自启
 
 **AI 对话**
@@ -59,12 +67,21 @@
 - `deepseek-reasoner` 的思考过程折叠展示
 - 未配置 API Key 时使用内置台词兜底，装上就能玩
 - 系统人设可改，默认是「短句、软萌、有元气」
+- 快捷指令自动把剪贴板内容拼进提示词：翻译、总结、润色、周报、解释代码、拆任务
+- **联网搜索**：点 🌐 或 `/搜索 关键词`，结果带标题、摘要和来源链接；支持 DuckDuckGo（免费）、Tavily、SearXNG
+- **发送图片**：🖼 按钮、直接粘贴截图或把图片拖进窗口，可配合支持视觉的模型看图；图片会自动等比缩放到 1280px 再发送
 
 **桌上小功能**
 
 - 番茄钟：25/5 自动切换，托盘和宠物徽标都能控制，结束有气泡 + 系统通知
 - 喝水提醒：默认 60 分钟，可改 15 ~ 240 分钟
 - 偶尔主动说话：3 ~ 8 分钟随机一句，可关闭
+
+### 表情包
+
+聊天、摸头、升级时会主动发表情；等级越高解锁越多。
+
+![表情包](docs/screenshots/stickers.png)
 
 ## 下载即用（推荐）
 
@@ -91,21 +108,45 @@
 
 > **关于费用**：聊天请求直接发往你配置的接口，费用由你的 DeepSeek 账号承担，本项目不经过任何中间服务器。
 
+### 联网搜索配置（可选）
+
+默认使用 **DuckDuckGo**，不需要任何 Key，适合概念、百科类问题；想要更完整的网页结果可以换 Tavily：
+
+| 服务 | 需要什么 | 适合 |
+| --- | --- | --- |
+| DuckDuckGo | 什么都不用填 | 概念、定义、百科 |
+| Tavily | [tavily.com](https://tavily.com) 的 API Key（有免费额度） | 新闻、网页、带摘要的搜索 |
+| SearXNG | 自己部署的 SearXNG 地址（需开启 JSON 输出） | 隐私优先、自建服务 |
+
+在 **设置 → 联网搜索** 里选择服务、填 Key / 地址，点「测试搜索」能当场验证。
+搜索会把关键词发给你选择的服务，结果只用于本次回答，不会保存到本地。
+
+### 发送图片
+
+点聊天栏的 🖼，或直接按 `Ctrl+V` 粘贴截图，也可以把图片拖进窗口。图片会自动缩放到最长边 1280px，再以 base64 发给模型。
+
+> ⚠️ 图片需要**支持视觉输入**的接口。`deepseek-chat` 目前只接受文字；想看图请在设置里把 Base URL / 模型换成支持视觉的服务，并在「图片识别模型」里填对应模型名（留空则用主模型）。否则会提示模型不支持图片。
+
 ## 怎么玩
 
 | 操作 | 效果 |
 | --- | --- |
-| 左键单击小鲸鱼 | 摸头：爱心粒子 + 随机台词 |
+| 左键单击小鲸鱼 | 摸头：爱心粒子 + 随机台词 + 亲密度 +1 |
 | 双击小鲸鱼 | 打开聊天窗口 |
 | 按住拖动 | 移动位置，松手后自动记住 |
-| 右键小鲸鱼 | 聊天 / 摸头 / 番茄钟 / 喝水提醒 / 设置 / 藏起来 / 退出 |
+| 右键小鲸鱼 | 聊天 / 摸头 / 快捷指令 / 亲密度 / 番茄钟 / 整点报时 / 设置 / 藏起来 / 退出 |
 | 点击左下角 🍅 徽标 | 开始或暂停番茄钟 |
-| 托盘图标单击 / 右键 | 打开聊天 / 完整菜单 |
-| `Ctrl / Cmd + Shift + Alt + D` | 显示或隐藏小鲸鱼 |
+| 聊天里点 ⚡ 或输入 `/` | 打开快捷指令面板（会自动读取剪贴板） |
+| 输入 `/翻译 早上好` | 直接执行斜杠指令 |
+| 点 🖼、Ctrl+V 粘贴截图、或把图片拖进窗口 | 添加待发送图片 |
+| 点 🌐 开启联网 | 下一条消息先搜索、再带着资料回答 |
+| 输入 `/搜索 关键词` | 直接列出搜索结果和来源链接 |
 | 聊天框 `Enter` / `Shift + Enter` | 发送 / 换行 |
+| 托盘图标单击 / 右键 | 打开聊天 / 完整菜单（含亲密度、快捷指令） |
+| `Ctrl / Cmd + Shift + Alt + D` | 显示或隐藏小鲸鱼 |
 | 聊天框 `Esc` | 关闭聊天窗口 |
 
-🌰 **小技巧**：把宠物缩到 80% 放在屏幕右下角，聊天窗口会自动贴在它旁边；番茄钟徽标在专注时会一直显示剩余时间。
+🌰 **小技巧**：把宠物缩到 80% 放在屏幕右下角，聊天窗口会自动贴在它旁边；番茄钟徽标在专注时会一直显示剩余时间；想快速翻译网页上复制的文字，直接在聊天里按 `/` 选「翻译」就行。
 
 ## 从源码运行
 
@@ -182,16 +223,19 @@ deepseek-pet/
 ├─ src/
 │  ├─ main/
 │  │  ├─ settings.js          # 配置默认值 + 校验 + 读写
+│  │  ├─ state.js             # 亲密度、等级、每日上限、统计
 │  │  ├─ chat.js              # DeepSeek SSE 流式请求
+│  │  ├─ search.js            # 联网搜索（Tavily / SearXNG / DuckDuckGo）
+│  │  ├─ http.js              # 带重定向和超时的 JSON 请求器
 │  │  ├─ pomodoro.js          # 番茄钟状态机
 │  │  └─ windows.js           # 尺寸、屏幕边界、窗口贴边计算
 │  ├─ renderer/
 │  │  ├─ pet.html/.css/.js    # 宠物窗口（两种形象 + 交互 + 动画）
-│  │  ├─ chat.html/.css/.js   # 聊天面板
+│  │  ├─ chat.html/.css/.js   # 聊天面板（图片 + 搜索 + 指令 + 表情包）
 │  │  ├─ settings.html/.css/.js
-│  │  └─ assets/              # 鲸鱼娘图、简约鲸鱼头像、托盘图
-│  └─ shared/                 # 台词、Markdown、格式化（渲染进程 + 测试共用）
-├─ scripts/                   # 语法检查、测试入口、切图、截图、图标生成
+│  │  └─ assets/              # 鲸鱼娘图、表情包、托盘图
+│  └─ shared/                 # 台词、表情包元数据、快捷指令、Markdown、格式化
+├─ scripts/                   # 语法检查、测试入口、切图、表情包、截图、图标
 ├─ test/                      # 单元测试 + 主进程冒烟测试
 ├─ test-support/              # 纯 Node 的 Electron 替身
 ├─ docs/screenshots/          # README 截图
@@ -205,6 +249,9 @@ deepseek-pet/
 | 鲸鱼娘形象 | 替换 `src/renderer/assets/pet-girl.png`；或用自己的图跑 `python scripts/prepare-art.py 图片路径`（自动去白底、裁掉自带气泡、生成头像） |
 | 简约小鲸鱼 | `src/renderer/pet.html` 里的内联 SVG，表情靠 `data-mood` 切换 |
 | 台词 | `src/shared/quips.js`，所有气泡文案都在这里 |
+| 亲密度等级 / 分值 | `src/main/state.js` 里的 `LEVELS`、`ACTIONS`、`MAX_DAILY_GAIN` |
+| 快捷指令 | `src/shared/commands.js`，加一项就会出现在 ⚡ 面板、斜杠指令和右键菜单里 |
+| 表情包 | 替换 `src/renderer/assets/stickers/` 下的图片；或用 `python scripts/make-stickers.py` 从立绘重新生成（需要 Pillow） |
 | 宠物 / 聊天窗口大小 | `src/main/windows.js` 顶部的 `PET_BASE`、`CHAT_SIZE` |
 | 人设 | 设置页的「小鲸鱼的人设」，或 `src/main/settings.js` 里的 `systemPrompt` 默认值 |
 | 应用图标 | `python scripts/make-logo.py && python scripts/make-icons.py docs/screenshots/logo.png`（需要 Pillow） |
@@ -220,22 +267,25 @@ deepseek-pet/
 
 ## 隐私与安全
 
-- **只在小鲸鱼身上响应鼠标**：透明区域通过 `setIgnoreMouseEvents(..., { forward: true })` 做命中检测，不会挡住桌面点击。
-- 聊天内容只会发送到你自己填写的 API 地址；项目没有任何统计、上报或中转服务器。
+- **只在角色身上响应鼠标**：透明区域通过 `setIgnoreMouseEvents(..., { forward: true })` 做命中检测，不会挡住桌面点击。
+- 聊天内容、发送的图片只会发送到你自己填写的 API 地址；搜索关键词只会发给你选择的搜索服务。项目没有任何统计、上报或中转服务器。
 - 渲染进程开启 `contextIsolation` + `sandbox`，关闭 `nodeIntegration`，页面使用严格 CSP，外链交给系统浏览器打开。
-- API Key 以明文保存在本机用户目录（Windows 大概是 `%APPDATA%\deepseek-pet\settings.json`），不会进入 Git 仓库（`.gitignore` 已排除相关文件）。不要把这份配置发给别人。
+- API Key、Tavily Key 以明文保存在本机用户目录（Windows 大概是 `%APPDATA%\deepseek-pet\settings.json`），不会进入 Git 仓库（`.gitignore` 已排除相关文件）。不要把这份配置发给别人。
 
 ## 测试
 
 ```bash
-npm test        # 8 个测试文件：配置校验、SSE 地址推导、真实流式解析、番茄钟、Markdown 安全、UI 接线、主进程冒烟
+npm test        # 12 个测试文件：亲密度、搜索、HTTP、配置校验、SSE、番茄钟、表情包/指令、Markdown、UI 接线、主进程冒烟
 npm run check   # 对全部 .js 做 node --check 语法检查
 ```
 
 其中：
 
+- `test/state.test.js` 覆盖等级阈值、每日上限、冷却时间、跨天重置和落盘。
+- `test/search.test.js` 验证 Tavily / SearXNG / DuckDuckGo 三种搜索的请求与解析。
+- `test/http.test.js` 用本地服务验证重定向、POST、JSON 解析和错误状态。
 - `test/chat-stream.test.js` 会起一个本地 HTTP 服务，真实验证 SSE 分包拼接、`[DONE]`、`reasoning_content`、401 提示和主动中断。
-- `test/main-smoke.test.js` 用一个纯 Node 的 Electron 替身把主进程完整跑一遍：建窗口、存设置、拖拽、离线回复、番茄钟、右键菜单、退出清理，**不需要真的装 Electron，也不需要联网**。
+- `test/main-smoke.test.js` 用一个纯 Node 的 Electron 替身把主进程完整跑一遍：建窗口、存设置、拖拽、离线回复、图片消息、亲密度、表情包、番茄钟、右键菜单、退出清理，**不需要真的装 Electron，也不需要联网**。
 
 ## 常见问题
 
@@ -258,6 +308,21 @@ Electron 打包的未签名程序比较常见，可以加白名单，或用 `npm
 
 **想换回简约小鲸鱼？**
 设置 →「形象风格」→ 简约小鲸鱼，保存后立刻生效。
+
+**亲密度怎么涨？有什么用？**
+摸头 +1、发一条聊天 +2、完成一个番茄 +5，每天最多 +60；等级越高，解锁的表情包越多、主动发得越勤，升到新等级时还会庆祝并送一张表情包。设置页能看到等级、进度、互动统计和表情包收集情况。
+
+**整点报时太吵，能关吗？**
+设置 →「整点报时」关掉，或者托盘菜单 / 右键菜单里取消勾选，立刻生效。
+
+**快捷指令读不到剪贴板？**
+先复制一段文字再选指令；如果剪贴板本来就是空的，指令会先把提示词填进输入框，你接着输入内容即可。
+
+**联网搜索搜不到东西？**
+默认的 DuckDuckGo 只返回摘要/百科类结果，新闻类问题建议到设置里换 Tavily（有免费额度）或自建 SearXNG，填好后点「测试搜索」确认。搜索失败不会影响聊天，只会提示原因。
+
+**发图片后提示模型不支持？**
+`deepseek-chat` 是纯文本模型。要图片识别，请在设置里改用支持视觉的接口（Base URL + 模型），并填写「图片识别模型」，再发一次即可。
 
 **为什么窗口是透明的但有时候点不到？**
 这是故意的：只有鼠标移到角色或气泡上才会接管点击，其他区域直接穿透。

@@ -17,7 +17,11 @@
           <strong id="pet-name">小深</strong>
           <span class="status" id="status">在线</span>
         </div>
+        <span class="level-badge" id="level-badge" title="亲密度">❤️ Lv.1</span>
         <div class="tools">
+          <button class="icon-btn" id="btn-web" type="button" title="联网搜索（开 / 关）">🌐</button>
+          <button class="icon-btn" id="btn-command" type="button" title="快捷指令">⚡</button>
+          <button class="icon-btn" id="btn-image" type="button" title="发送图片">🖼</button>
           <button class="icon-btn" id="btn-new" type="button" title="开始新对话">✚</button>
           <button class="icon-btn" id="btn-settings" type="button" title="设置">⚙</button>
           <button class="icon-btn" id="btn-close" type="button" title="关闭">✕</button>
@@ -43,6 +47,34 @@
         </div>
       </main>
 
+      <div class="attach hidden" id="attach">
+        <img id="attach-preview" alt="" />
+        <div class="attach-meta">
+          <strong id="attach-name">图片</strong>
+          <span>随下一条消息一起发送</span>
+        </div>
+        <button class="attach-remove" id="attach-remove" type="button" title="移除图片">✕</button>
+      </div>
+
+      <div class="player hidden" id="player">
+        <img class="player-cover" id="player-cover" alt="" />
+        <div class="player-meta">
+          <strong id="player-title">未在播放</strong>
+          <span id="player-sub"></span>
+          <div class="player-progress"><span id="player-bar"></span></div>
+        </div>
+        <button class="player-btn" id="player-toggle" type="button" title="播放 / 暂停">⏸</button>
+        <button class="player-btn" id="player-stop" type="button" title="停止">✕</button>
+      </div>
+
+      <div class="palette hidden" id="palette">
+        <div class="palette-head">
+          <span>快捷指令</span>
+          <span class="palette-hint">自动带上剪贴板内容</span>
+        </div>
+        <div class="palette-list" id="palette-list"></div>
+      </div>
+
       <form class="composer" id="composer">
         <textarea
           id="input"
@@ -55,9 +87,13 @@
       </form>
     </div>
 
+    <input type="file" id="image-input" accept="image/*" hidden />
+
     <script src="../shared/preview-api.js"></script>
     <script src="../shared/markdown.js"></script>
     <script src="../shared/format.js"></script>
+    <script src="../shared/stickers.js"></script>
+    <script src="../shared/commands.js"></script>
     <script src="chat.js"></script>
   </body>
 </html>
