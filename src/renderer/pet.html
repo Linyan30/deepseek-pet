@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; font-src 'self'"
+    />
+    <title>DeepSeek 小鲸鱼</title>
+    <link rel="stylesheet" href="pet.css" />
+  </head>
+  <body>
+    <div class="stage" id="stage">
+      <div class="bubble" id="bubble" data-hit="1" aria-hidden="true">
+        <span id="bubble-text"></span>
+      </div>
+
+      <div class="pet" id="pet" data-hit="1">
+        <svg
+          id="whale"
+          class="whale"
+          viewBox="0 0 200 200"
+          width="170"
+          height="170"
+          xmlns="http://www.w3.org/2000/svg"
+          data-mood="idle"
+          role="img"
+          aria-label="小鲸鱼"
+        >
+          <defs>
+            <linearGradient id="bodyGrad" x1="18%" y1="0%" x2="82%" y2="100%">
+              <stop offset="0%" stop-color="#93AAFF" />
+              <stop offset="45%" stop-color="#5C7AF6" />
+              <stop offset="100%" stop-color="#3C58DE" />
+            </linearGradient>
+            <linearGradient id="bellyGrad" x1="50%" y1="0%" x2="50%" y2="100%">
+              <stop offset="0%" stop-color="#FFFFFF" />
+              <stop offset="100%" stop-color="#D9E4FF" />
+            </linearGradient>
+            <radialGradient id="cheekGrad">
+              <stop offset="0%" stop-color="#FF9DB8" stop-opacity="0.75" />
+              <stop offset="100%" stop-color="#FF9DB8" stop-opacity="0" />
+            </radialGradient>
+            <clipPath id="bodyClip">
+              <ellipse cx="100" cy="118" rx="56" ry="42" />
+            </clipPath>
+            <path
+              id="heartShape"
+              d="M0 0 C -2.4 -3.4 -7.8 -2.4 -7.8 1.9 C -7.8 5.9 0 9.8 0 9.8 C 0 9.8 7.8 5.9 7.8 1.9 C 7.8 -2.4 2.4 -3.4 0 0 Z"
+            />
+          </defs>
+
+          <ellipse class="shadow" cx="100" cy="172" rx="42" ry="6.5" fill="#2B3A8F" opacity="0.18" />
+
+          <g class="tail">
+            <path class="peduncle" d="M144 112 Q162 114 172 122 L172 146 Q160 152 144 152 Z" fill="#4059E0" />
+            <path
+              class="fluke"
+              d="M160 118 C170 108 182 100 192 98 C198 97 201 102 197 109 C192 118 184 126 176 132 C184 139 192 147 197 156 C201 163 198 168 192 167 C182 165 170 156 160 146 Z"
+              fill="#4B68F0"
+            />
+          </g>
+
+          <ellipse cx="100" cy="118" rx="56" ry="42" fill="url(#bodyGrad)" />
+          <ellipse
+            cx="94"
+            cy="134"
+            rx="43"
+            ry="26"
+            fill="url(#bellyGrad)"
+            clip-path="url(#bodyClip)"
+          />
+          <path
+            d="M63 130 Q94 144 125 126"
+            stroke="#BCD0FF"
+            stroke-width="2"
+            fill="none"
+            opacity="0.65"
+            clip-path="url(#bodyClip)"
+          />
+          <ellipse
+            cx="76"
+            cy="93"
+            rx="17"
+            ry="9"
+            fill="#FFFFFF"
+            opacity="0.22"
+            transform="rotate(-18 76 93)"
+          />
+
+          <path class="flipper" d="M78 140 Q84 159 102 158 Q96 142 78 140 Z" fill="#3E5AE8" />
+
+          <ellipse class="blush" cx="61" cy="126" rx="10" ry="5.5" fill="url(#cheekGrad)" />
+          <ellipse class="blush" cx="129" cy="124" rx="10" ry="5.5" fill="url(#cheekGrad)" />
+
+          <g class="face face-normal">
+            <g class="eyes">
+              <ellipse cx="79" cy="106" rx="9.5" ry="10" fill="#FFFFFF" />
+              <ellipse cx="115" cy="104" rx="9.5" ry="10" fill="#FFFFFF" />
+              <g class="pupils" id="pupils">
+                <circle cx="80" cy="108" r="5.3" fill="#16224E" />
+                <circle cx="116" cy="106" r="5.3" fill="#16224E" />
+                <circle cx="78.3" cy="106" r="1.9" fill="#FFFFFF" />
+                <circle cx="114.3" cy="104" r="1.9" fill="#FFFFFF" />
+              </g>
+            </g>
+            <path
+              d="M92 128 Q99 136 106 128"
+              stroke="#16224E"
+              stroke-width="2.6"
+              fill="none"
+              stroke-linecap="round"
+            />
+          </g>
+
+          <g class="face face-happy">
+            <path
+              d="M70 109 Q79 98 88 109"
+              stroke="#16224E"
+              stroke-width="3.2"
+              fill="none"
+              stroke-linecap="round"
+            />
+            <path
+              d="M106 107 Q115 96 124 107"
+              stroke="#16224E"
+              stroke-width="3.2"
+              fill="none"
+              stroke-linecap="round"
+            />
+            <path d="M89 125 Q99 139 109 125 Z" fill="#16224E" />
+            <path d="M95 132 Q99 135 103 132 Z" fill="#FF8FA8" />
+          </g>
+
+          <g class="face face-love">
+            <use href="#heartShape" transform="translate(79 99) scale(1.05)" fill="#FF5C8A" />
+            <use href="#heartShape" transform="translate(115 97) scale(1.05)" fill="#FF5C8A" />
+            <path d="M89 125 Q99 139 109 125 Z" fill="#16224E" />
+            <path d="M95 132 Q99 135 103 132 Z" fill="#FF8FA8" />
+          </g>
+
+          <g class="face face-sleepy">
+            <path
+              d="M70 106 Q79 113 88 106"
+              stroke="#16224E"
+              stroke-width="3"
+              fill="none"
+              stroke-linecap="round"
+            />
+            <path
+              d="M106 104 Q115 111 124 104"
+              stroke="#16224E"
+              stroke-width="3"
+              fill="none"
+              stroke-linecap="round"
+            />
+            <ellipse cx="99" cy="130" rx="4.2" ry="3.6" fill="#16224E" opacity="0.8" />
+            <text x="130" y="92" class="zzz" font-size="16" font-weight="700" fill="#8FA6FF">z</text>
+            <text x="142" y="80" class="zzz zzz-two" font-size="11" font-weight="700" fill="#AFC0FF">z</text>
+          </g>
+
+          <g class="spout">
+            <path
+              d="M100 78 Q96 68 103 62"
+              stroke="#D7E4FF"
+              stroke-width="3"
+              fill="none"
+              stroke-linecap="round"
+              opacity="0.9"
+            />
+            <circle cx="100" cy="61" r="4.2" fill="#C9DAFF" opacity="0.9" />
+            <circle cx="111" cy="52" r="3.1" fill="#C9DAFF" opacity="0.8" />
+            <circle cx="89" cy="49" r="2.6" fill="#C9DAFF" opacity="0.7" />
+          </g>
+        </svg>
+      </div>
+
+      <div class="badge hidden" id="badge" data-hit="1" title="点击开始 / 暂停番茄钟">
+        <span class="badge-icon" id="badge-icon">🍅</span>
+        <span class="badge-text" id="badge-text">25:00</span>
+      </div>
+
+      <div class="hearts" id="hearts"></div>
+    </div>
+
+    <script src="../shared/preview-api.js"></script>
+    <script src="../shared/format.js"></script>
+    <script src="pet.js"></script>
+  </body>
+</html>

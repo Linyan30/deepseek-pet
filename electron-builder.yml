@@ -1,0 +1,55 @@
+appId: com.deepseek.pet
+productName: DeepSeekPet
+copyright: Copyright © 2026 DeepSeek Pet Contributors
+
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - main.js
+  - preload.js
+  - src/**/*
+  - package.json
+
+asar: true
+compression: maximum
+
+win:
+  icon: build/icon.ico
+  target:
+    - target: portable
+      arch:
+        - x64
+    - target: nsis
+      arch:
+        - x64
+
+portable:
+  artifactName: DeepSeekPet-${version}-portable.exe
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: DeepSeek 小鲸鱼
+  artifactName: DeepSeekPet-${version}-setup.exe
+
+mac:
+  category: public.app-category.entertainment
+  icon: build/icon.png
+  target:
+    - target: dmg
+      arch:
+        - arm64
+        - x64
+
+linux:
+  icon: build/icon.png
+  category: Utility
+  target:
+    - target: AppImage
+      arch:
+        - x64

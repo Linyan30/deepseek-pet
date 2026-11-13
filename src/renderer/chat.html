@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; font-src 'self'"
+    />
+    <title>和小鲸鱼聊天</title>
+    <link rel="stylesheet" href="chat.css" />
+  </head>
+  <body>
+    <div class="card">
+      <header class="titlebar">
+        <img class="avatar" src="assets/avatar.svg" alt="" width="34" height="34" />
+        <div class="titles">
+          <strong id="pet-name">小深</strong>
+          <span class="status" id="status">在线</span>
+        </div>
+        <div class="tools">
+          <button class="icon-btn" id="btn-new" type="button" title="开始新对话">✚</button>
+          <button class="icon-btn" id="btn-settings" type="button" title="设置">⚙</button>
+          <button class="icon-btn" id="btn-close" type="button" title="关闭">✕</button>
+        </div>
+      </header>
+
+      <div class="banner hidden" id="banner">
+        <span id="banner-text"></span>
+        <button class="banner-btn" id="banner-action" type="button">去设置</button>
+      </div>
+
+      <main class="messages" id="messages">
+        <div class="welcome" id="welcome">
+          <div class="welcome-emoji">🐳</div>
+          <p class="welcome-title">和小鲸鱼聊点什么？</p>
+          <p class="welcome-sub">Enter 发送 · Shift + Enter 换行</p>
+          <div class="chips" id="chips">
+            <button class="chip" type="button" data-prompt="讲个冷笑话">讲个冷笑话</button>
+            <button class="chip" type="button" data-prompt="帮我想三个变量名">起个变量名</button>
+            <button class="chip" type="button" data-prompt="今天午饭吃什么好？">午饭吃什么</button>
+            <button class="chip" type="button" data-prompt="用一个词形容我">形容一下我</button>
+          </div>
+        </div>
+      </main>
+
+      <form class="composer" id="composer">
+        <textarea
+          id="input"
+          rows="1"
+          maxlength="4000"
+          placeholder="和小鲸鱼说点什么…"
+          aria-label="消息输入框"
+        ></textarea>
+        <button class="send" id="send" type="submit" title="发送" aria-label="发送">➤</button>
+      </form>
+    </div>
+
+    <script src="../shared/preview-api.js"></script>
+    <script src="../shared/markdown.js"></script>
+    <script src="../shared/format.js"></script>
+    <script src="chat.js"></script>
+  </body>
+</html>

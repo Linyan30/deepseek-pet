@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; font-src 'self'"
+    />
+    <title>小鲸鱼设置</title>
+    <link rel="stylesheet" href="settings.css" />
+  </head>
+  <body>
+    <div class="card">
+      <header class="titlebar">
+        <img src="assets/avatar.svg" alt="" />
+        <div class="titles">
+          <strong>小鲸鱼设置</strong>
+          <span class="sub">设置会自动保存在本机</span>
+        </div>
+        <div class="tools">
+          <button class="icon-btn" id="btn-close" type="button" title="关闭">✕</button>
+        </div>
+      </header>
+
+      <div class="body">
+        <section class="section">
+          <h2 class="section-title">外观与行为</h2>
+
+          <div class="field">
+            <span class="field-label">宠物名字</span>
+            <input type="text" id="petName" style="width: 190px" maxlength="24" />
+          </div>
+
+          <div class="field column">
+            <span class="field-label">宠物大小</span>
+            <div class="range-row">
+              <input type="range" id="scale" min="0.7" max="1.6" step="0.05" />
+              <span class="range-value" id="scale-value">100%</span>
+            </div>
+          </div>
+
+          <div class="field">
+            <span class="field-label">始终置顶</span>
+            <label class="switch">
+              <input type="checkbox" id="alwaysOnTop" />
+              <span class="track"></span>
+            </label>
+          </div>
+
+          <div class="field">
+            <span class="field-label">开机自动启动</span>
+            <label class="switch">
+              <input type="checkbox" id="autoLaunch" />
+              <span class="track"></span>
+            </label>
+          </div>
+
+          <div class="field">
+            <span class="field-label">偶尔主动说话</span>
+            <label class="switch">
+              <input type="checkbox" id="idleTalk" />
+              <span class="track"></span>
+            </label>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2 class="section-title">DeepSeek 模型</h2>
+
+          <div class="field column">
+            <span class="field-label">API Key</span>
+            <div class="input-row">
+              <input type="password" id="apiKey" placeholder="sk-..." autocomplete="off" spellcheck="false" />
+              <button class="mini" id="toggle-key" type="button">显示</button>
+            </div>
+          </div>
+          <p class="field-hint">
+            只保存在本机用户目录，不会上传到任何地方。还没有 Key？
+            <a href="#" id="get-key">去 DeepSeek 开放平台申请</a>
+          </p>
+
+          <div class="field column">
+            <span class="field-label">Base URL</span>
+            <input type="text" id="baseUrl" spellcheck="false" placeholder="https://api.deepseek.com" />
+          </div>
+
+          <div class="field column">
+            <span class="field-label">模型</span>
+            <input type="text" id="model" list="model-list" spellcheck="false" />
+            <datalist id="model-list">
+              <option value="deepseek-chat"></option>
+              <option value="deepseek-reasoner"></option>
+            </datalist>
+          </div>
+
+          <div class="field column">
+            <span class="field-label">发散程度（temperature）</span>
+            <div class="range-row">
+              <input type="range" id="temperature" min="0" max="2" step="0.1" />
+              <span class="range-value" id="temperature-value">1.0</span>
+            </div>
+          </div>
+
+          <div class="field column">
+            <span class="field-label">小鲸鱼的人设</span>
+            <textarea id="systemPrompt" maxlength="4000"></textarea>
+          </div>
+
+          <div class="field" style="justify-content: flex-start">
+            <button class="btn ghost" id="btn-test" type="button">测试连接</button>
+          </div>
+          <div class="test-result" id="test-result"></div>
+        </section>
+
+        <section class="section">
+          <h2 class="section-title">桌上小功能</h2>
+
+          <div class="field">
+            <span class="field-label">喝水提醒</span>
+            <label class="switch">
+              <input type="checkbox" id="waterReminder" />
+              <span class="track"></span>
+            </label>
+          </div>
+
+          <div class="field">
+            <span class="field-label">提醒间隔</span>
+            <div class="number-row">
+              <input type="number" id="waterInterval" min="15" max="240" step="5" />
+              <span>分钟</span>
+            </div>
+          </div>
+
+          <div class="field">
+            <span class="field-label">番茄钟专注时长</span>
+            <div class="number-row">
+              <input type="number" id="workMinutes" min="1" max="120" step="1" />
+              <span>分钟</span>
+            </div>
+          </div>
+
+          <div class="field">
+            <span class="field-label">番茄钟休息时长</span>
+            <div class="number-row">
+              <input type="number" id="breakMinutes" min="1" max="60" step="1" />
+              <span>分钟</span>
+            </div>
+          </div>
+
+          <p class="field-hint">
+            右键小鲸鱼，或者点它旁边的小番茄，就能开始计时。快捷键
+            <strong>Ctrl / Cmd + Shift + Alt + D</strong> 可以显示或隐藏宠物。
+          </p>
+        </section>
+      </div>
+
+      <div class="footer">
+        <span class="version" id="version">v1.0.0</span>
+        <span class="spacer"></span>
+        <button class="btn ghost" id="btn-cancel" type="button">关闭</button>
+        <button class="btn primary" id="btn-save" type="button">保存</button>
+      </div>
+
+      <div class="toast" id="toast">已保存</div>
+    </div>
+
+    <script src="../shared/preview-api.js"></script>
+    <script src="../shared/format.js"></script>
+    <script src="settings.js"></script>
+  </body>
+</html>
