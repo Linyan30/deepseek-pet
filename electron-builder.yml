@@ -46,6 +46,10 @@ mac:
         - arm64
         - x64
 
+dmg:
+  # 同时打 arm64 / x64，文件名带架构后缀，避免互相覆盖
+  artifactName: DeepSeekPet-${version}-${arch}.${ext}
+
 linux:
   icon: build/icon.png
   category: Utility
@@ -53,3 +57,6 @@ linux:
     - target: AppImage
       arch:
         - x64
+
+appImage:
+  artifactName: DeepSeekPet-${version}-${arch}.${ext}
