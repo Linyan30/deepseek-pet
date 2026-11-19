@@ -52,6 +52,7 @@ def render(chrome: str, target: str, width: int, height: int, background: str, s
 
     src = {
         "pet": "../src/renderer/pet.html",
+        "pet-sleep": "../src/renderer/pet.html?demo=sleep",
         "chat": "../src/renderer/chat.html?demo=1",
         "settings": "../src/renderer/settings.html",
         "chat-image": "../src/renderer/chat.html?demo=image",
@@ -92,6 +93,7 @@ def render(chrome: str, target: str, width: int, height: int, background: str, s
 def main() -> int:
     chrome = find_chrome()
     render(chrome, "pet", 210, 290, "00000000")
+    render(chrome, "pet-sleep", 210, 290, "00000000")
     render(chrome, "chat", 380, 540, "ffffffff")
     render(chrome, "settings", 420, 640, "ffffffff")
     render(chrome, "chat-image", 380, 540, "ffffffff")

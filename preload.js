@@ -24,6 +24,10 @@ contextBridge.exposeInMainWorld('api', {
   // 亲密度 / 表情包 / 剪贴板
   getState: () => ipcRenderer.invoke('state:get'),
   reportPat: () => ipcRenderer.send('state:interact', 'pat'),
+  getMemoryStats: () => ipcRenderer.invoke('memory:stats'),
+  clearMemory: (scope) => ipcRenderer.invoke('memory:clear', scope),
+  clearChatHistory: () => ipcRenderer.send('chat:clear-history'),
+  onChatHistory: on('chat:history'),
   readClipboard: () => ipcRenderer.invoke('clipboard:read'),
   requestSticker: () => ipcRenderer.send('sticker:random'),
   onStateChanged: on('state:changed'),
@@ -71,6 +75,11 @@ contextBridge.exposeInMainWorld('api', {
   // 通用事件
   onBubble: on('pet:bubble'),
   onPat: on('pet:pat'),
+  onPetCursor: on('pet:cursor'),
+  onPetSleep: on('pet:sleep'),
+  onPetWalkStart: on('pet:walk-start'),
+  onPetWalkEnd: on('pet:walk-end'),
+  onPetWake: on('pet:wake'),
   onSettingsChanged: on('settings:changed'),
 
   // 窗口与系统

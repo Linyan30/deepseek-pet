@@ -12,13 +12,16 @@ const {
   shell,
   Notification,
   globalShortcut,
-  clipboard
+  clipboard,
+  powerMonitor
 } = require('electron');
 
 const { DEFAULT_SETTINGS, loadSettings, saveSettings, sanitizeSettings } = require('./src/main/settings');
-const { streamChat, testConnection } = require('./src/main/chat');
+const { streamChat, completeChat, testConnection } = require('./src/main/chat');
 const { Pomodoro, PHASE, formatClock } = require('./src/main/pomodoro');
 const { createStateStore } = require('./src/main/state');
+const { createMemoryStore } = require('./src/main/memory');
+const { createRoamController } = require('./src/main/roam');
 const { createUpdater } = require('./src/main/updater');
 const { searchWeb, buildSearchContext } = require('./src/main/search');
 const { searchMusic } = require('./src/main/music');
@@ -52,6 +55,11 @@ let settings = { ...DEFAULT_SETTINGS };
 let settingsFile = '';
 let stateStore = null;
 let stateFile = '';
+let memoryStore = null;
+let memoryFile = '';
+let chatHistoryFile = '';
+let roamController = null;
+let extractCounter = 0;
 let petWin = null;
 let chatWin = null;
 let settingsWin = null;
@@ -449,6 +457,9 @@ function ensureChatWindow() {
   chatWin.webContents.on('did-finish-load', () => {
     sendChat('settings:changed', publicSettings());
     sendChat('state:changed', stateSnapshot());
+    if (settings.saveChatHistory !== false && memoryStore) {
+      sendChat('chat:history', { messages: memoryStore.listMessages() });
+    }
   });
 
   return chatWin;
@@ -536,6 +547,7 @@ function quitApp() {
   try {
     globalShortcut.unregisterAll();
     if (pomodoro) pomodoro.dispose();
+    if (roamController) roamController.stop();
     clearTimeout(waterTimer);
     clearTimeout(idleTimer);
     clearTimeout(chimeTimer);
@@ -844,7 +856,106 @@ function toApiMessages(messages) {
   });
 }
 
-function offlineReply(userText) {
+function memorySummary() {
+  return memoryStore ? memoryStore.stats() : { facts: 0, messages: 0 };
+}
+
+function saveHistory(role, content, meta) {
+  if (!memoryStore || settings.saveChatHistory === false) return;
+  try {
+    memoryStore.appendMessage(role, content, meta);
+  } catch (error) {
+    console.warn('[memory] 保存聊天失败：', error.message);
+  }
+}
+
+function localReply(text) {
+  if (!isAlive(chatWin)) return;
+  sendChat('chat:delta', { delta: text });
+  sendChat('chat:done', {});
+  bubble('记好啦～', 'happy', 2400);
+}
+
+/** 处理 /记住、/忘掉 这两个本地记忆指令；返回 true 表示已经处理完。 */
+function handleMemoryCommand(userText) {
+  if (!memoryStore) return false;
+
+  const remember = userText.match(/^\/记住\s+([\s\S]+)$/);
+  if (remember) {
+    saveHistory('user', userText);
+    const fact = memoryStore.addFact(remember[1]);
+    const reply = fact ? `记住啦：${fact.text}` : '这句我没记住，换个更具体的说法？';
+    saveHistory('assistant', reply);
+    localReply(reply);
+    return true;
+  }
+
+  const forget = userText.match(/^\/忘掉\s+([\s\S]+)$/);
+  if (forget) {
+    saveHistory('user', userText);
+    const removed = memoryStore.removeFacts(forget[1]);
+    const reply = removed > 0 ? `忘掉 ${removed} 条相关记忆。` : '没有找到相关记忆。';
+    saveHistory('assistant', reply);
+    localReply(reply);
+    return true;
+  }
+
+  return false;
+}
+
+/** 每 8 轮对话后台整理一次长期记忆，失败静默。 */
+function maybeExtractMemories() {
+  if (!memoryStore || settings.memoryEnabled === false || !settings.apiKey) return;
+  extractCounter += 1;
+  if (extractCounter < 8) return;
+  extractCounter = 0;
+  extractMemories().catch((error) => console.warn('[memory] 自动提取失败：', error.message));
+}
+
+async function extractMemories() {
+  if (!memoryStore) return;
+  const recent = memoryStore
+    .recentMessages(16)
+    .filter((message) => message.role === 'user' || message.role === 'assistant');
+  if (recent.length < 4) return;
+
+  const transcript = recent
+    .map((message) => `${message.role === 'user' ? '用户' : '小深'}：${message.content}`)
+    .join('\n');
+
+  const content = await completeChat({
+    settings,
+    messages: [
+      {
+        role: 'system',
+        content:
+          '你是记忆整理器。从对话里提取关于用户的长期事实（偏好、身份、长期目标、重要安排）。' +
+          '只输出 JSON 字符串数组，最多 3 条，每条不超过 60 字；没有值得记的就输出 []。不要输出解释或代码块。'
+      },
+      { role: 'user', content: `对话记录：\n${transcript}` }
+    ],
+    maxTokens: 300,
+    temperature: 0.2
+  });
+
+  const cleaned = String(content || '')
+    .replace(/```(?:json)?/gi, '')
+    .replace(/```/g, '')
+    .trim();
+
+  let list;
+  try {
+    list = JSON.parse(cleaned);
+  } catch {
+    return;
+  }
+  if (!Array.isArray(list)) return;
+  list.slice(0, 3).forEach((item) => {
+    if (typeof item === 'string' && item.trim()) memoryStore.addFact(item, 'auto');
+  });
+}
+
+function offlineReply(userText, onComplete) {
   const text = pick(LINES.offline);
   let index = 0;
   const timer = setInterval(() => {
@@ -857,6 +968,7 @@ function offlineReply(userText) {
     if (index >= text.length) {
       clearInterval(timer);
       sendChat('chat:done', { offline: true });
+      if (typeof onComplete === 'function') onComplete(text);
       maybeChatSticker(userText);
     }
   }, 45);
@@ -883,6 +995,11 @@ async function handleChatSend(event, payload) {
     activeStream = null;
   }
 
+  // /记住、/忘掉 在本地处理，不消耗模型
+  if (!hasImage && handleMemoryCommand(userText)) return;
+
+  saveHistory('user', userText, { hasImage });
+
   // 需要联网时先搜索，再把结果作为上下文交给模型（发图片时不搜）
   let searchPayload = null;
   if (payload && payload.search && !hasImage) {
@@ -898,11 +1015,18 @@ async function handleChatSend(event, payload) {
   }
 
   if (!settings.apiKey) {
-    activeStream = offlineReply(userText);
+    activeStream = offlineReply(userText, (reply) => {
+      saveHistory('assistant', reply);
+      maybeExtractMemories();
+    });
     return;
   }
 
-  const withSystem = [{ role: 'system', content: settings.systemPrompt }];
+  const memoryContext =
+    settings.memoryEnabled !== false && memoryStore ? memoryStore.buildMemoryContext(12) : '';
+  const systemContent = [settings.systemPrompt, memoryContext].filter(Boolean).join('\n\n');
+  const withSystem = [{ role: 'system', content: systemContent }];
+
   if (searchPayload && searchPayload.results.length > 0) {
     withSystem.push({
       role: 'system',
@@ -919,11 +1043,13 @@ async function handleChatSend(event, payload) {
     hasImage && settings.visionModel ? { ...settings, model: settings.visionModel } : settings;
 
   let produced = false;
+  let answerText = '';
   activeStream = streamChat({
     settings: requestSettings,
     messages: withSystem,
     onDelta: (delta) => {
       produced = true;
+      answerText += delta;
       sendChat('chat:delta', { delta });
     },
     onReasoning: (delta) => {
@@ -933,6 +1059,10 @@ async function handleChatSend(event, payload) {
       activeStream = null;
       sendChat('chat:done', {});
       if (produced) bubble('✨', 'happy', 1600);
+      if (answerText.trim()) {
+        saveHistory('assistant', answerText);
+        maybeExtractMemories();
+      }
       maybeChatSticker(userText);
     },
     onError: (message) => {
@@ -1055,6 +1185,37 @@ function registerIpc() {
     );
     if (!allowed) return null;
     return stateSnapshot();
+  });
+
+  ipcMain.handle('memory:stats', (event) => {
+    const allowed = [chatWin, settingsWin].some(
+      (win) => isAlive(win) && event.sender.id === win.webContents.id
+    );
+    if (!allowed) return { facts: 0, messages: 0 };
+    return memorySummary();
+  });
+
+  ipcMain.handle('memory:clear', (event, scope) => {
+    const allowed = [chatWin, settingsWin].some(
+      (win) => isAlive(win) && event.sender.id === win.webContents.id
+    );
+    if (!allowed || !memoryStore) return { ok: false, stats: { facts: 0, messages: 0 } };
+
+    if (scope === 'facts') memoryStore.clearFacts();
+    else if (scope === 'messages') memoryStore.clearMessages();
+    else {
+      memoryStore.clearFacts();
+      memoryStore.clearMessages();
+    }
+
+    if (scope !== 'facts') sendChat('chat:history', { messages: [] });
+    return { ok: true, stats: memorySummary() };
+  });
+
+  ipcMain.on('chat:clear-history', (event) => {
+    if (!isAlive(chatWin) || event.sender.id !== chatWin.webContents.id) return;
+    if (memoryStore) memoryStore.clearMessages();
+    sendChat('chat:history', { messages: [] });
   });
 
   ipcMain.on('state:interact', (event, type) => {
@@ -1194,12 +1355,14 @@ function registerIpc() {
   ipcMain.on('pet:drag', (event, delta) => {
     if (!isAlive(petWin) || event.sender.id !== petWin.webContents.id) return;
     if (!delta || !Number.isFinite(delta.dx) || !Number.isFinite(delta.dy)) return;
+    if (roamController) roamController.noteDrag(true);
     const bounds = petWin.getBounds();
     petWin.setPosition(Math.round(bounds.x + delta.dx), Math.round(bounds.y + delta.dy));
   });
 
   ipcMain.on('pet:drag-end', (event) => {
     if (!isAlive(petWin) || event.sender.id !== petWin.webContents.id) return;
+    if (roamController) roamController.noteDrag(false);
     persistPosition();
   });
 
@@ -1282,11 +1445,23 @@ if (!gotLock) {
     settings = loadSettings(settingsFile);
     stateFile = path.join(path.dirname(settingsFile), 'state.json');
     stateStore = createStateStore(stateFile);
+    memoryFile = path.join(path.dirname(settingsFile), 'memory.json');
+    chatHistoryFile = path.join(path.dirname(settingsFile), 'chats.json');
+    memoryStore = createMemoryStore({ memoryFile, chatFile: chatHistoryFile });
 
     startPomodoro();
     registerIpc();
     createPetWindow();
     createTray();
+    roamController = createRoamController({
+      screen,
+      powerMonitor,
+      getPetWindow: () => petWin,
+      getChatWindow: () => chatWin,
+      send: (channel, payload) => sendPet(channel, payload),
+      getSettings: () => settings
+    });
+    roamController.start();
     updater = createUpdater({
       app,
       shell,
@@ -1328,6 +1503,7 @@ if (!gotLock) {
   app.on('before-quit', () => {
     app.isQuitting = true;
     if (pomodoro) pomodoro.dispose();
+    if (roamController) roamController.stop();
     clearTimeout(waterTimer);
     clearTimeout(idleTimer);
     clearTimeout(chimeTimer);

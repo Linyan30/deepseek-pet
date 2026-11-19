@@ -87,6 +87,22 @@
           </div>
 
           <div class="field">
+            <span class="field-label">自主漫游</span>
+            <label class="switch">
+              <input type="checkbox" id="roaming" />
+              <span class="track"></span>
+            </label>
+          </div>
+
+          <div class="field">
+            <span class="field-label">跟随鼠标</span>
+            <label class="switch">
+              <input type="checkbox" id="followCursor" />
+              <span class="track"></span>
+            </label>
+          </div>
+
+          <div class="field">
             <span class="field-label">偶尔主动说话</span>
             <label class="switch">
               <input type="checkbox" id="idleTalk" />
@@ -203,6 +219,59 @@
 
           <p class="field-hint">
             「自动」会先用必应，不行再试 DuckDuckGo；必应国内可以直接访问。搜索会把结果和来源链接一起交给模型，条数建议 3~5 条。
+          </p>
+        </section>
+
+        <section class="section">
+          <h2 class="section-title">记忆与聊天记录</h2>
+
+          <div class="field">
+            <span class="field-label">长期记忆</span>
+            <label class="switch">
+              <input type="checkbox" id="memoryEnabled" />
+              <span class="track"></span>
+            </label>
+          </div>
+          <p class="field-hint">
+            每 8 轮对话会自动整理一次关于你的长期事实，聊天时带上；也可以直接说「/记住 我在写桌宠」「/忘掉 杭州」。
+          </p>
+
+          <div class="field">
+            <span class="field-label">保存聊天记录</span>
+            <label class="switch">
+              <input type="checkbox" id="saveChatHistory" />
+              <span class="track"></span>
+            </label>
+          </div>
+          <p class="field-hint" id="memory-stats">正在读取…</p>
+
+          <div class="button-row">
+            <button class="btn ghost" id="btn-clear-chats" type="button">清空聊天记录</button>
+            <button class="btn ghost" id="btn-clear-memory" type="button">清空记忆</button>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2 class="section-title">语音朗读</h2>
+
+          <div class="field">
+            <span class="field-label">自动朗读回复</span>
+            <label class="switch">
+              <input type="checkbox" id="voiceEnabled" />
+              <span class="track"></span>
+            </label>
+          </div>
+
+          <div class="field column">
+            <span class="field-label">语速</span>
+            <div class="range-row">
+              <input type="range" id="voiceRate" min="0.6" max="1.6" step="0.05" />
+              <span class="range-value" id="voice-rate-value">1.0x</span>
+            </div>
+          </div>
+
+          <p class="field-hint">
+            使用系统自带嗓音，不需要额外 Key；聊天里每条回复旁边也有单独的小喇叭。
           </p>
         </section>
 

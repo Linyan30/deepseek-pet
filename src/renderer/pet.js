@@ -26,6 +26,7 @@
   let bubbleTimer = 0;
   let moodTimer = 0;
   let stickerTimer = 0;
+  let asleep = false;
   let dragging = false;
   let movedWhileDragging = false;
   let lastPointer = { x: 0, y: 0 };
@@ -54,6 +55,35 @@
     const value = style === 'whale' ? 'whale' : 'girl';
     els.stage.dataset.style = value;
     return value;
+  }
+
+  // ------------------------------------------------------------ 漫游 / 睡觉 / 跟随
+
+  function setAsleep(value) {
+    asleep = Boolean(value);
+    els.stage.dataset.asleep = asleep ? 'true' : 'false';
+    if (asleep) {
+      setMood('sleepy', 0);
+    } else if (els.whale.dataset.mood === 'sleepy') {
+      setMood('idle', 0);
+    }
+  }
+
+  function applyCursor(payload) {
+    if (!payload || payload.enabled === false) return;
+    const x = Math.max(-1, Math.min(1, Number(payload.x) || 0));
+    const y = Math.max(-1, Math.min(1, Number(payload.y) || 0));
+
+    if (els.stage.dataset.style === 'whale') {
+      if (els.pupils) {
+        els.pupils.style.transform = `translate(${(x * 2.2).toFixed(2)}px, ${(y * 1.8).toFixed(2)}px)`;
+      }
+      return;
+    }
+
+    if (els.girl) {
+      els.girl.style.translate = `${(x * 2.6).toFixed(2)}px ${(y * 1.8).toFixed(2)}px`;
+    }
   }
 
   function hideBubble() {
@@ -342,6 +372,17 @@
     if (payload && payload.action) handleMusicCommand(payload.action);
   });
 
+  api.onPetCursor((payload) => applyCursor(payload));
+
+  api.onPetSleep((payload) => setAsleep(payload && payload.asleep));
+
+  api.onPetWalkStart(() => els.stage.classList.add('walking'));
+  api.onPetWalkEnd(() => els.stage.classList.remove('walking'));
+
+  api.onPetWake(() => {
+    if (!asleep) showBubble('我醒啦～你回来啦', { mood: 'happy', duration: 3000 });
+  });
+
   api.onPomodoroTick(renderPomodoro);
 
   api.onSettingsChanged((next) => {
@@ -373,6 +414,12 @@
       renderPomodoro(await api.pomodoroState());
     } catch {
       /* 忽略 */
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('demo') === 'sleep') {
+      setAsleep(true);
+      return;
     }
 
     window.setTimeout(() => {

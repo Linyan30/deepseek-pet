@@ -11,6 +11,16 @@
     alwaysOnTop: document.getElementById('alwaysOnTop'),
     autoLaunch: document.getElementById('autoLaunch'),
     autoUpdate: document.getElementById('autoUpdate'),
+    roaming: document.getElementById('roaming'),
+    followCursor: document.getElementById('followCursor'),
+    memoryEnabled: document.getElementById('memoryEnabled'),
+    saveChatHistory: document.getElementById('saveChatHistory'),
+    voiceEnabled: document.getElementById('voiceEnabled'),
+    voiceRate: document.getElementById('voiceRate'),
+    voiceRateValue: document.getElementById('voice-rate-value'),
+    memoryStats: document.getElementById('memory-stats'),
+    btnClearChats: document.getElementById('btn-clear-chats'),
+    btnClearMemory: document.getElementById('btn-clear-memory'),
     idleTalk: document.getElementById('idleTalk'),
     hourlyChime: document.getElementById('hourlyChime'),
     apiKey: document.getElementById('apiKey'),
@@ -66,6 +76,11 @@
     els.temperatureValue.textContent = Number(els.temperature.value).toFixed(1);
   }
 
+  function setVoiceRateLabel() {
+    const rate = Number(els.voiceRate.value) || 1;
+    els.voiceRateValue.textContent = `${Math.round(rate * 100) / 100}x`;
+  }
+
   function syncSearchFields() {
     const provider = els.searchProvider.value;
     els.tavilyField.style.display = provider === 'tavily' ? '' : 'none';
@@ -79,6 +94,13 @@
     els.alwaysOnTop.checked = Boolean(settings.alwaysOnTop);
     els.autoLaunch.checked = Boolean(settings.autoLaunch);
     els.autoUpdate.checked = settings.autoUpdate !== false;
+    els.roaming.checked = settings.roaming !== false;
+    els.followCursor.checked = settings.followCursor !== false;
+    els.memoryEnabled.checked = settings.memoryEnabled !== false;
+    els.saveChatHistory.checked = settings.saveChatHistory !== false;
+    els.voiceEnabled.checked = Boolean(settings.voiceEnabled);
+    els.voiceRate.value = String(settings.voiceRate || 1);
+    setVoiceRateLabel();
     els.idleTalk.checked = Boolean(settings.idleTalk);
     els.hourlyChime.checked = Boolean(settings.hourlyChime);
     els.apiKey.value = settings.apiKey || '';
@@ -108,6 +130,12 @@
       alwaysOnTop: els.alwaysOnTop.checked,
       autoLaunch: els.autoLaunch.checked,
       autoUpdate: els.autoUpdate.checked,
+      roaming: els.roaming.checked,
+      followCursor: els.followCursor.checked,
+      memoryEnabled: els.memoryEnabled.checked,
+      saveChatHistory: els.saveChatHistory.checked,
+      voiceEnabled: els.voiceEnabled.checked,
+      voiceRate: Number(els.voiceRate.value),
       idleTalk: els.idleTalk.checked,
       hourlyChime: els.hourlyChime.checked,
       apiKey: els.apiKey.value.trim(),
@@ -135,7 +163,33 @@
 
   els.scale.addEventListener('input', setScaleLabel);
   els.temperature.addEventListener('input', setTemperatureLabel);
+  els.voiceRate.addEventListener('input', setVoiceRateLabel);
   els.searchProvider.addEventListener('change', syncSearchFields);
+
+  async function refreshMemoryStats() {
+    try {
+      const stats = await api.getMemoryStats();
+      els.memoryStats.textContent = `长期记忆 ${stats.facts} 条 · 聊天记录 ${stats.messages} 条`;
+    } catch {
+      els.memoryStats.textContent = '记忆统计暂不可用';
+    }
+  }
+
+  async function clearMemoryScope(scope, label) {
+    const ok = window.confirm(`确定要${label}吗？此操作不可恢复。`);
+    if (!ok) return;
+
+    try {
+      await api.clearMemory(scope);
+      toast(scope === 'facts' ? '记忆已清空' : '聊天记录已清空');
+      await refreshMemoryStats();
+    } catch {
+      toast('清空失败，请重试');
+    }
+  }
+
+  els.btnClearChats.addEventListener('click', () => clearMemoryScope('messages', '清空聊天记录'));
+  els.btnClearMemory.addEventListener('click', () => clearMemoryScope('facts', '清空长期记忆'));
 
   els.toggleKey.addEventListener('click', () => {
     const showing = els.apiKey.type === 'text';
@@ -285,6 +339,8 @@
     } catch {
       /* 预览或旧版本没有亲密度接口 */
     }
+
+    await refreshMemoryStats();
 
     try {
       const info = await api.getVersion();

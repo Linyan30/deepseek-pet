@@ -4,7 +4,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const http = require('node:http');
 
-const { streamChat, testConnection } = require('../src/main/chat');
+const { streamChat, testConnection, completeChat } = require('../src/main/chat');
 
 function startServer(handler) {
   return new Promise((resolve, reject) => {
@@ -182,4 +182,54 @@ test('测试连接会读取 /models 返回的模型列表', async () => {
   assert.equal(result.ok, true);
   assert.deepEqual(result.models, ['deepseek-chat', 'deepseek-reasoner']);
   await closeServer(server);
+});
+
+test('completeChat 返回非流式内容，用于记忆提取', async () => {
+  let received = null;
+  const { server, port } = await startServer((req, res) => {
+    let body = '';
+    req.on('data', (chunk) => {
+      body += chunk;
+    });
+    req.on('end', () => {
+      received = JSON.parse(body);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(
+        JSON.stringify({
+          choices: [{ message: { role: 'assistant', content: '["用户喜欢猫"]' } }]
+        })
+      );
+    });
+  });
+
+  const content = await completeChat({
+    settings: { apiKey: 'sk-test', baseUrl: `http://127.0.0.1:${port}`, model: 'deepseek-chat' },
+    messages: [{ role: 'user', content: '提取记忆' }],
+    maxTokens: 100
+  });
+
+  assert.equal(content, '["用户喜欢猫"]');
+  assert.equal(received.stream, false);
+  assert.equal(received.max_tokens, 100);
+  await closeServer(server);
+});
+
+test('completeChat 遇到 401 会抛出可读错误', async () => {
+  const { server, port } = await startServer((req, res) => {
+    res.writeHead(401, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: { message: 'Authentication Fails' } }));
+  });
+
+  try {
+    await assert.rejects(
+      () =>
+        completeChat({
+          settings: { apiKey: 'bad', baseUrl: `http://127.0.0.1:${port}`, model: 'deepseek-chat' },
+          messages: [{ role: 'user', content: 'hi' }]
+        }),
+      /API Key/
+    );
+  } finally {
+    await closeServer(server);
+  }
 });

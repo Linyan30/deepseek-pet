@@ -424,6 +424,13 @@ body {
   overflow-y: auto;
 }
 
+.msg-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 1px;
+}
+
 .copy-btn {
   align-self: flex-start;
   border: 0;
@@ -432,7 +439,7 @@ body {
   font-size: 10px;
   padding: 0 2px;
   cursor: pointer;
-  opacity: 0;
+  opacity: 0.45;
   transition: opacity 0.15s ease;
 }
 
@@ -442,6 +449,36 @@ body {
 
 .copy-btn:hover {
   color: var(--blue);
+}
+
+.speak-btn {
+  align-self: flex-start;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 10px;
+  padding: 0 2px;
+  cursor: pointer;
+  opacity: 0.45;
+  transition: opacity 0.15s ease, color 0.15s ease;
+}
+
+.speak-btn:hover {
+  opacity: 1;
+  color: var(--blue);
+}
+
+.msg-image-placeholder {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  margin-bottom: 4px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px dashed rgba(255, 255, 255, 0.55);
+  font-size: 11px;
+  color: #ffffff;
 }
 
 /* ------------------------------------------------------------ 输入区 */

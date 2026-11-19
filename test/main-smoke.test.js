@@ -110,6 +110,41 @@ test('带图片的消息在未配置 Key 时也能走离线回复', async () => 
   assert.ok(done);
 });
 
+test('/记住 会把内容写入长期记忆，并返回本地回复', async () => {
+  const before = chatWindow.webContents.sent.filter((item) => item.channel === 'chat:done').length;
+
+  mock.ipcMain.emitFrom('chat:send', chatWindow.webContents.id, {
+    messages: [{ role: 'user', content: '/记住 我养了一只猫叫豆豆' }],
+    search: false
+  });
+
+  await waitFor(
+    () => chatWindow.webContents.sent.filter((item) => item.channel === 'chat:done').length > before
+  );
+
+  const factFile = path.join(settingsDir, 'deepseek-pet', 'memory.json');
+  assert.ok(fs.existsSync(factFile), 'memory.json 应已生成');
+  const data = JSON.parse(fs.readFileSync(factFile, 'utf8'));
+  assert.ok(data.facts.some((fact) => fact.text.includes('豆豆')));
+
+  const stats = await mock.ipcMain.invoke('memory:stats', chatWindow.webContents.id);
+  assert.ok(stats.facts >= 1);
+});
+
+test('聊天记录会保存到本地，并且可以清空', async () => {
+  const chatFile = path.join(settingsDir, 'deepseek-pet', 'chats.json');
+  assert.ok(fs.existsSync(chatFile), 'chats.json 应已生成');
+  const data = JSON.parse(fs.readFileSync(chatFile, 'utf8'));
+  assert.ok(data.messages.length > 0);
+
+  const cleared = await mock.ipcMain.invoke('memory:clear', chatWindow.webContents.id, 'messages');
+  assert.equal(cleared.ok, true);
+  assert.equal(cleared.stats.messages, 0);
+
+  const clearedFacts = await mock.ipcMain.invoke('memory:clear', chatWindow.webContents.id, 'facts');
+  assert.equal(clearedFacts.stats.facts, 0);
+});
+
 test('搜索测试接口只允许设置窗口调用', async () => {
   const denied = await mock.ipcMain.invoke('search:test', petWindow.webContents.id, { query: 'x' });
   assert.equal(denied.ok, false);

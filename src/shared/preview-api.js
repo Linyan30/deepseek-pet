@@ -69,7 +69,7 @@
         return { ok: true, settings: { ...settings } };
       },
       testApi: async () => ({ ok: false, message: '浏览器预览模式无法连接 API。', models: [] }),
-      getVersion: async () => ({ version: '1.2.0', electron: 'preview', platform: 'browser' }),
+      getVersion: async () => ({ version: '1.3.0', electron: 'preview', platform: 'browser' }),
       getQuips: async () => DEMO_LINES,
       getState: async () => ({
         affinity: 132,
@@ -89,6 +89,10 @@
           unlocked: 2 >= sticker.minLevel
         }))
       }),
+      getMemoryStats: async () => ({ facts: 6, messages: 14 }),
+      clearMemory: async () => ({ ok: true, stats: { facts: 0, messages: 0 } }),
+      clearChatHistory: () => {},
+      onChatHistory: on('chat:history'),
       reportPat: () => emit('state:changed', {}),
       readClipboard: async () => '（预览）这是一段从剪贴板读到的示例文字。',
       requestSticker: () => emit('chat:sticker', { id: 'happy', caption: '好耶！' }),
@@ -176,6 +180,11 @@
       onPomodoroTick: on('pomodoro:tick'),
       onBubble: on('pet:bubble'),
       onPat: on('pet:pat'),
+      onPetCursor: on('pet:cursor'),
+      onPetSleep: on('pet:sleep'),
+      onPetWalkStart: on('pet:walk-start'),
+      onPetWalkEnd: on('pet:walk-end'),
+      onPetWake: on('pet:wake'),
       onSettingsChanged: on('settings:changed'),
       openChat: () => {},
       openSettings: () => {},

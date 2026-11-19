@@ -522,3 +522,10 @@ input[type="range"] {
   font-size: 10px;
   filter: grayscale(1);
 }
+
+.button-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}

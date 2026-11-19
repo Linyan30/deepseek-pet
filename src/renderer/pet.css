@@ -308,7 +308,7 @@ body {
   transform-origin: 50% 92%;
   animation: bob 3.6s ease-in-out infinite;
   filter: drop-shadow(0 9px 14px rgba(30, 45, 110, 0.22));
-  transition: filter 0.25s ease;
+  transition: filter 0.25s ease, translate 0.2s ease-out;
 }
 
 .pet:hover .girl {
@@ -409,6 +409,37 @@ body {
 
 .stage[data-mood="sleepy"] .sleep-marks {
   opacity: 1;
+}
+
+/* 睡觉：慢下来、暗一点，zzz 显示 */
+.stage[data-asleep="true"] .sleep-marks {
+  opacity: 1;
+}
+
+.stage[data-asleep="true"] .girl {
+  animation: sleep-bob 5.4s ease-in-out infinite;
+  filter: saturate(0.78) brightness(0.94) drop-shadow(0 9px 14px rgba(30, 45, 110, 0.18));
+}
+
+.stage[data-asleep="true"] .whale {
+  animation: sleep-bob 5.4s ease-in-out infinite;
+  filter: saturate(0.8) brightness(0.95);
+}
+
+/* 走动：小幅上下晃 */
+.stage.walking .girl,
+.stage.walking .whale {
+  animation: walk-hop 0.34s ease-in-out infinite;
+}
+
+@keyframes walk-hop {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(-5px) rotate(2deg);
+  }
 }
 
 /* 宠物身边弹出的表情包 */

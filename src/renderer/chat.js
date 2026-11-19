@@ -11,6 +11,10 @@
     findCommand: () => null,
     buildPrompt: (_command, text) => String(text == null ? '' : text)
   };
+  const speechApi = window.DSSpeech || {
+    prepareSpeechText: (text) => String(text == null ? '' : text),
+    pickVoice: () => null
+  };
 
   const els = {
     avatar: document.getElementById('avatar'),
@@ -49,7 +53,7 @@
     btnClose: document.getElementById('btn-close')
   };
 
-  let settings = { petName: '小深', hasApiKey: false, model: 'deepseek-chat' };
+  let settings = { petName: '小深', hasApiKey: false, model: 'deepseek-chat', voiceEnabled: false, voiceRate: 1 };
   let history = [];
   let streaming = false;
   let current = null;
@@ -533,7 +537,7 @@
   }
 
   /** 用户输入按纯文本渲染，避免把用户打的星号、尖括号当成格式。 */
-  function appendUserMessage(text, image) {
+  function appendUserMessage(text, image, hasImage) {
     const node = createMessageNode('user');
     if (image) {
       const picture = document.createElement('img');
@@ -541,10 +545,52 @@
       picture.src = image;
       picture.alt = '图片';
       node.items.insertBefore(picture, node.text);
+    } else if (hasImage) {
+      const placeholder = document.createElement('div');
+      placeholder.className = 'msg-image-placeholder';
+      placeholder.textContent = '🖼 图片（已归档）';
+      node.items.insertBefore(placeholder, node.text);
     }
     node.text.textContent = text;
     scrollToBottom();
     return node;
+  }
+
+  // ------------------------------------------------------------ 语音朗读
+
+  function stopSpeaking() {
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+  }
+
+  function speak(text) {
+    if (!window.speechSynthesis || !text) return false;
+    stopSpeaking();
+    const content = speechApi.prepareSpeechText(text, 600);
+    if (!content) return false;
+
+    const utterance = new SpeechSynthesisUtterance(content);
+    utterance.lang = 'zh-CN';
+    utterance.rate = Number(settings.voiceRate) || 1;
+    utterance.pitch = 1.03;
+
+    try {
+      const voice = speechApi.pickVoice(window.speechSynthesis.getVoices());
+      if (voice) utterance.voice = voice;
+      window.speechSynthesis.speak(utterance);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  function addSpeakButton(node, text) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'speak-btn';
+    button.textContent = '🔊';
+    button.title = '朗读这条回复';
+    button.addEventListener('click', () => speak(text));
+    actionRow(node).appendChild(button);
   }
 
   // ------------------------------------------------------------ 图片附件
@@ -626,6 +672,16 @@
     }
   }
 
+  function actionRow(node) {
+    if (!node.actionRow) {
+      const row = document.createElement('div');
+      row.className = 'msg-actions';
+      node.items.appendChild(row);
+      node.actionRow = row;
+    }
+    return node.actionRow;
+  }
+
   function addCopyButton(node) {
     const button = document.createElement('button');
     button.type = 'button';
@@ -638,7 +694,7 @@
         button.textContent = '复制';
       }, 1400);
     });
-    node.items.appendChild(button);
+    actionRow(node).appendChild(button);
   }
 
   function addReasoning(node) {
@@ -690,6 +746,8 @@
       history.push({ role: 'assistant', content });
       if (history.length > 24) history = history.slice(-24);
       addCopyButton(node);
+      addSpeakButton(node, content);
+      if (settings.voiceEnabled) speak(content);
     } else {
       node.text.classList.add('error');
       node.text.textContent = '（这次没有收到内容，再试一次？）';
@@ -702,6 +760,7 @@
 
   function send() {
     if (streaming) return;
+    stopSpeaking();
     let text = els.input.value.trim();
     const image = pendingImage ? pendingImage.url : null;
     if (!text && !image) return;
@@ -775,7 +834,9 @@
   function resetConversation() {
     if (streaming) abort();
     closePalette();
+    stopSpeaking();
     setPendingImage(null);
+    api.clearChatHistory();
     history = [];
     current = null;
     streaming = false;
@@ -987,6 +1048,41 @@
 
   api.onChatSticker((payload) => appendSticker(payload));
 
+  function renderHistory(payload) {
+    const list = payload && Array.isArray(payload.messages) ? payload.messages : [];
+    if (list.length === 0) {
+      stopSpeaking();
+      els.messages.querySelectorAll('.msg').forEach((node) => node.remove());
+      history = [];
+      els.welcome.classList.remove('hidden');
+      return;
+    }
+
+    stopSpeaking();
+    els.messages.querySelectorAll('.msg').forEach((node) => node.remove());
+    history = [];
+
+    list.forEach((message) => {
+      if (message.role === 'assistant') {
+        const node = appendMessage('assistant', message.content);
+        addCopyButton(node);
+        addSpeakButton(node, message.content);
+        history.push({ role: 'assistant', content: message.content });
+      } else {
+        appendUserMessage(message.content, null, Boolean(message.hasImage));
+        history.push({ role: 'user', content: message.content });
+      }
+    });
+
+    if (history.length > 20) history = history.slice(-20);
+    els.welcome.classList.add('hidden');
+    scrollToBottom();
+  }
+
+  api.onChatHistory((payload) => renderHistory(payload));
+
+  window.addEventListener('beforeunload', stopSpeaking);
+
   api.onChatSearch((payload) => {
     if (payload) appendSearchBlock(payload);
   });
@@ -1022,6 +1118,7 @@
     if (els.avatar) {
       els.avatar.src = avatarSource();
     }
+    if (!settings.voiceEnabled) stopSpeaking();
     document.title = `${settings.petName || '小鲸鱼'} · 聊天`;
     if (!streaming) {
       setStatus(settings.hasApiKey ? '在线' : '未配置 API Key');
@@ -1060,25 +1157,22 @@
       hideBanner();
       els.welcome.classList.add('hidden');
       appendMessage('user', '你好呀，小鲸鱼！');
-      appendMessage(
+      const replyOne = appendMessage(
         'assistant',
         '你好！我是**小深**，一只住在桌面上的 DeepSeek 小鲸鱼 🐳\n有什么可以帮你的吗？'
       );
+      addCopyButton(replyOne);
+      addSpeakButton(replyOne, replyOne.text.innerText);
+
       appendMessage('user', '帮我起一个读配置文件的小函数名');
-      appendMessage(
+      const replyTwo = appendMessage(
         'assistant',
         '试试 **`loadConfig`**，简单直接；\n如果想强调“带默认值”，可以叫 **`loadConfigWithDefaults`**；\n函数式一点的话，**`readConfig`** 也很常见。'
       );
+      addCopyButton(replyTwo);
+      addSpeakButton(replyTwo, replyTwo.text.innerText);
+
       appendSticker({ id: 'love', caption: '抱抱～' });
-      els.messages.querySelectorAll('.msg.assistant').forEach((node) => {
-        if (node.textContent) {
-          const copy = document.createElement('button');
-          copy.type = 'button';
-          copy.className = 'copy-btn';
-          copy.textContent = '复制';
-          node.querySelector('.msg-items').appendChild(copy);
-        }
-      });
       scrollToBottom();
     }
 

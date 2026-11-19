@@ -229,7 +229,11 @@ function installElectronMock(options) {
     screen: {
       getPrimaryDisplay: () => displays[0],
       getDisplayNearestPoint: () => displays[0],
-      getCursorScreenPoint: () => ({ x: 0, y: 0 })
+      getDisplayMatching: () => displays[0],
+      getCursorScreenPoint: () => ({ x: 400, y: 300 })
+    },
+    powerMonitor: {
+      getSystemIdleTime: () => 0
     },
     Tray: FakeTray,
     Menu: {

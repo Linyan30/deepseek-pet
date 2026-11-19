@@ -95,6 +95,20 @@ test('整点报时默认开启，可关闭', () => {
   assert.equal(sanitizeSettings({ hourlyChime: 'no' }).hourlyChime, true);
 });
 
+test('漫游、记忆与语音的默认值', () => {
+  const settings = sanitizeSettings({});
+  assert.equal(settings.roaming, true);
+  assert.equal(settings.followCursor, true);
+  assert.equal(settings.memoryEnabled, true);
+  assert.equal(settings.saveChatHistory, true);
+  assert.equal(settings.voiceEnabled, false);
+  assert.equal(settings.voiceRate, 1);
+
+  assert.equal(sanitizeSettings({ roaming: false }).roaming, false);
+  assert.equal(sanitizeSettings({ voiceEnabled: true, voiceRate: 9 }).voiceRate, 1.6);
+  assert.equal(sanitizeSettings({ voiceRate: 0.1 }).voiceRate, 0.6);
+});
+
 test('自动检查更新默认开启', () => {
   assert.equal(sanitizeSettings({}).autoUpdate, true);
   assert.equal(sanitizeSettings({ autoUpdate: false }).autoUpdate, false);

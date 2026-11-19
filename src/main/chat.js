@@ -253,6 +253,66 @@ function testConnection(settings) {
   });
 }
 
+/**
+ * 非流式对话，用于「从聊天里提取长期记忆」这类后台小任务。
+ * @returns {Promise<string>}
+ */
+function completeChat({ settings, messages, maxTokens = 400, temperature = 0.2 }) {
+  return new Promise((resolve, reject) => {
+    let url;
+    try {
+      url = new URL(chatEndpoint(settings.baseUrl));
+    } catch {
+      reject(new Error('Base URL 格式不正确'));
+      return;
+    }
+
+    const payload = JSON.stringify({
+      model: settings.model || 'deepseek-chat',
+      messages,
+      stream: false,
+      temperature,
+      max_tokens: maxTokens
+    });
+
+    const { lib, options } = createRequestOptions(url, settings.apiKey, { stream: false });
+    options.headers['Content-Type'] = 'application/json';
+    options.headers['Content-Length'] = Buffer.byteLength(payload);
+
+    const req = lib.request(options, (res) => {
+      let raw = '';
+      res.setEncoding('utf8');
+      res.on('data', (chunk) => {
+        raw += chunk;
+      });
+      res.on('end', () => {
+        const status = res.statusCode || 0;
+        if (status < 200 || status >= 300) {
+          const detail = extractApiMessage(raw);
+          reject(new Error(friendlyMessage(new ApiError(detail || `HTTP ${status}`, status), status)));
+          return;
+        }
+        try {
+          const parsed = JSON.parse(raw);
+          const content =
+            parsed && parsed.choices && parsed.choices[0] && parsed.choices[0].message
+              ? parsed.choices[0].message.content
+              : '';
+          resolve(String(content || ''));
+        } catch {
+          reject(new Error('返回内容不是合法 JSON'));
+        }
+      });
+      res.on('error', reject);
+    });
+
+    req.on('error', (error) => reject(new Error(friendlyMessage(error))));
+    req.setTimeout(30000, () => req.destroy(new Error('请求超时，请检查网络')));
+    req.write(payload);
+    req.end();
+  });
+}
+
 module.exports = {
   ApiError,
   chatEndpoint,
@@ -260,5 +320,6 @@ module.exports = {
   normalizeBaseUrl,
   friendlyMessage,
   streamChat,
+  completeChat,
   testConnection
 };
